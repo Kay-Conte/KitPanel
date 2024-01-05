@@ -46,6 +46,8 @@ version = "0.1.0"
 dependencies = [
  "foxhole",
  "models",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,8 +1,5 @@
 use serde::{Serialize, Deserialize};
 
-pub mod request;
-pub mod response;
-
 pub trait ToJson {
     fn to_json(&self) -> String;
 }
@@ -21,4 +18,15 @@ impl <'a, T> FromJson<'a> for T where T: Deserialize<'a> {
     fn from_json(from: &'a str) -> Option<Self> {
         serde_json::from_str(from).ok()
     }
+}
+
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ServerInfo {
+    pub id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GlobalStatus {
+    pub running: Vec<ServerInfo>,
 }

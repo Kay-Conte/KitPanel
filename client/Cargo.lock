@@ -987,6 +987,7 @@ dependencies = [
  "futures",
  "iced_core",
  "log",
+ "tokio",
  "wasm-bindgen-futures",
  "wasm-timer",
 ]
@@ -1379,9 +1380,8 @@ name = "minecraft_panel_client"
 version = "0.1.0"
 dependencies = [
  "iced",
+ "models",
  "reqwest",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -1404,6 +1404,14 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "models"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2510,6 +2518,7 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
+ "num_cpus",
  "pin-project-lite",
  "socket2",
  "windows-sys 0.48.0",
