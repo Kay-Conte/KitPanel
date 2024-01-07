@@ -22,11 +22,12 @@ impl <'a, T> FromJson<'a> for T where T: Deserialize<'a> {
 
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ServerInfo {
+pub struct ServerStatus {
     pub id: String,
+    pub running: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GlobalStatus {
-    pub running: Vec<ServerInfo>,
+    pub servers: Vec<ServerStatus>,
 }

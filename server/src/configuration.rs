@@ -12,8 +12,8 @@ pub struct ServerInfo {
 impl ServerInfo {
     fn template() -> Self {
         Self {
-            id: "Example".to_string(),
-            start_command: "ExampleStartCommand".to_string(),
+            id: "example".to_string(),
+            start_command: "example start command".to_string(),
         }
     }
 }

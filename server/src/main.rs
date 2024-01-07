@@ -7,7 +7,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use configuration::{Configuration, ServerInfo};
+use configuration::Configuration;
 use foxhole::{
     framework::run_with_cache,
     sys,
@@ -16,7 +16,7 @@ use foxhole::{
     Get, Post, Route,
 };
 use json::Json;
-use models::GlobalStatus;
+use models::{GlobalStatus, ServerStatus};
 
 pub struct Process {
     child: Child,
@@ -35,16 +35,24 @@ impl TypeCacheKey for Running {
     type Value = Arc<RwLock<Running>>;
 }
 
-fn status(_g: Get, Query(running): Query<Running>) -> Json<GlobalStatus> {
-    let running = running
-        .read()
-        .unwrap()
-        .0
+fn status(
+    _g: Get,
+    Query(config): Query<Configuration>,
+    Query(running): Query<Running>,
+) -> Json<GlobalStatus> {
+    let running = &running.read().unwrap().0;
+    let config = config.read().unwrap();
+
+    let servers = config
+        .servers
         .iter()
-        .map(|i| models::ServerInfo { id: i.0.clone() })
+        .map(|info| ServerStatus {
+            id: info.id.clone(),
+            running: running.contains_key(&info.id),
+        })
         .collect();
 
-    Json(GlobalStatus { running })
+    Json(GlobalStatus { servers })
 }
 
 fn start(
@@ -92,12 +100,28 @@ fn start(
     200
 }
 
+fn stop(_p: Post, UrlPart(server_id): UrlPart, Query(running): Query<Running>) -> u16 {
+    let mut running = running.write().unwrap();
+
+    match running.0.get_mut(&server_id) {
+        Some(process) => {
+            if process.child.kill().is_err() {
+                return 500;
+            }
+        }
+        None => {}
+    }
+
+    200
+}
+
 fn main() {
     let router = Route::empty().route("web", sys![]).route(
         "api",
         Route::empty()
             .route("status", sys![status])
-            .route("start", sys![start]),
+            .route("start", sys![start])
+            .route("stop", sys![stop]),
     );
 
     println!("Server is running on '0.0.0.0:8080'");

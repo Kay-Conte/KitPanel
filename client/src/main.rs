@@ -2,7 +2,7 @@ mod request;
 
 use iced::{
     executor,
-    widget::{button, column, row, Container, Text},
+    widget::{button, column, row, Container, Row, Text},
     Application, Command, Element, Renderer, Settings, Theme,
 };
 
@@ -81,12 +81,29 @@ impl Application for MinecraftPanel {
         let action_row = row(vec![refresh_button.into(), start_button.into()]).spacing(16);
 
         let status_text = match &self.status {
-            Some(status) => Text::new(format!("{:?}", status)),
-            None => Text::new("Loading status..."),
+            Some(status) => {
+                let col = column(
+                    status
+                        .servers
+                        .iter()
+                        .map(|server| {
+                            let el = Row::new()
+                                .spacing(20)
+                                .push(Text::new(server.id.clone()))
+                                .push(Text::new(server.running.to_string()));
+
+                            Element::from(el)
+                        })
+                        .collect(),
+                );
+
+                col.into()
+            }
+            None => Text::new("Loading status...").into(),
         };
 
         let main_column =
-            Container::new(column(vec![action_row.into(), status_text.into()])).padding(64);
+            Container::new(column(vec![action_row.into(), status_text]).spacing(20)).padding(64);
 
         main_column.into()
     }
