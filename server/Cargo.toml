@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-foxhole = "0.3.0"
+foxhole = { git = "https://github.com/kay-conte/foxhole-rs" }
 models = { path = "../models" }
 serde = { version = "1.0.194", features = ["derive"] }
-serde_json = "1.0.111"
+serde_json = { version = "1.0.111", features = ["preserve_order"] }

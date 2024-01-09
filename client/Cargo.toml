@@ -6,6 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-iced = { version = "0.10.0", features = ["tokio"] }
+iced = { version = "0.10.0", features = ["lazy", "tokio", "advanced", "image", "web-colors"] }
+iced-hex-color = "0.1.1"
+tokio = "1.35.1"
 reqwest = "0.11.23"
 models = { path = "../models" }
+indexmap = {version = "2.1.0", features = ["serde"] } 

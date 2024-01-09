@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize, de::DeserializeOwned};
 
 pub trait ToJson {
     fn to_json(&self) -> String;
@@ -10,13 +10,13 @@ impl<T> ToJson for T where T: Serialize {
     }
 }
 
-pub trait FromJson<'a>: Sized {
-    fn from_json(from: &'a str) -> Option<Self>;
+pub trait FromJson: Sized {
+    fn from_json(from: String) -> Option<Self>;
 }
 
-impl <'a, T> FromJson<'a> for T where T: Deserialize<'a> {
-    fn from_json(from: &'a str) -> Option<Self> {
-        serde_json::from_str(from).ok()
+impl <T> FromJson for T where T: DeserializeOwned {
+    fn from_json(from: String) -> Option<Self> {
+        serde_json::from_str(&from).ok()
     }
 }
 
@@ -30,4 +30,14 @@ pub struct ServerStatus {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GlobalStatus {
     pub servers: Vec<ServerStatus>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ServerOutput {
+    pub output: Option<Vec<String>>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct InputCommandRequest {
+    pub command: String,
 }

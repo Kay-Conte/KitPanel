@@ -1,7 +1,12 @@
-use std::{path::PathBuf, sync::{Arc, RwLock}, fs::File, io::{Read, Write}};
+use std::{
+    fs::File,
+    io::{Read, Write},
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 
 use foxhole::type_cache::TypeCacheKey;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ServerInfo {
@@ -27,7 +32,7 @@ pub struct Configuration {
 impl Default for Configuration {
     fn default() -> Self {
         Self {
-            base_directory: Configuration::config_path(),
+            base_directory: Configuration::config_path().parent().unwrap().to_path_buf(),
             servers: vec![ServerInfo::template()],
         }
     }
