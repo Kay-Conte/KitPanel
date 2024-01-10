@@ -80,7 +80,13 @@ impl Console {
     }
 
     fn write(&self, input: String) {
-        self.buf.write().unwrap().push_front(input);
+        let mut buf = self.buf.write().unwrap();
+
+        buf.push_front(input);
+
+        if buf.len() > SIZE {
+            buf.pop_back();
+        }
     }
 
     pub fn spawn(&self, source: ChildStdout, exit: Arc<AtomicBool>) {
@@ -100,7 +106,13 @@ fn handle_stdout(buf: Arc<RwLock<VecDeque<String>>>, stdout: ChildStdout, sender
     for line in reader.lines() {
         match line {
             Ok(line) => {
-                buf.write().unwrap().push_front(line);
+                let mut buf = buf.write().unwrap();
+
+                buf.push_front(line);
+
+                if buf.len() > SIZE {
+                    buf.pop_back();
+                }
             }
             Err(_) => break,
         }
