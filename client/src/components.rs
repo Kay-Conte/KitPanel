@@ -27,7 +27,7 @@ pub fn navbar<'a>(rhs: Element<'a, Message, Renderer<Theme>>) -> Element<'a, Mes
     .into()
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Status {
     Error(String),
     None,

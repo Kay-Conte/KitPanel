@@ -1,3 +1,4 @@
+mod authentication;
 mod configuration;
 mod json;
 mod process;
@@ -6,30 +7,42 @@ use std::{
     collections::HashMap,
     process::{Command, Stdio},
     sync::{Arc, RwLock},
+    time::Duration,
 };
 
 use configuration::Configuration;
 use foxhole::{
     framework::run_with_cache,
+    resolve::{Get, Post, Query, UrlPart},
     sys,
     type_cache::{TypeCache, TypeCacheKey},
-    Route, resolve::{Get, Query, Post, UrlPart},
+    Route,
 };
 use json::Json;
-use models::{GlobalStatus, InputCommandRequest, ServerOutput, ServerStatus};
+use models::{
+    GlobalStatus, InputCommandRequest, ServerOutput, ServerStatus, TokenRequest, TokenResponse,
+};
 use process::Process;
 
-#[derive(Default)]
-pub struct ProcessCache(HashMap<String, Process>);
+use crate::authentication::Authentication;
 
-impl TypeCacheKey for ProcessCache {
-    type Value = Arc<RwLock<ProcessCache>>;
+const SESSION_LENGTH: Duration = Duration::from_secs(7200);
+
+fn shared<T>(other: T) -> Arc<RwLock<T>> {
+    Arc::new(RwLock::new(other))
+}
+
+#[derive(Default)]
+pub struct ProcessManager(HashMap<String, Process>);
+
+impl TypeCacheKey for ProcessManager {
+    type Value = Arc<RwLock<ProcessManager>>;
 }
 
 fn get_status(
     _g: Get,
     Query(config): Query<Configuration>,
-    Query(running): Query<ProcessCache>,
+    Query(running): Query<ProcessManager>,
 ) -> Json<GlobalStatus> {
     let running = &running.read().unwrap().0;
     let config = config.read().unwrap();
@@ -54,7 +67,7 @@ fn start(
     _p: Post,
     UrlPart(server_id): UrlPart,
     Query(config): Query<Configuration>,
-    Query(running): Query<ProcessCache>,
+    Query(running): Query<ProcessManager>,
 ) -> u16 {
     {
         let running = running.read().unwrap();
@@ -114,7 +127,7 @@ fn start(
     200
 }
 
-fn stop(_p: Post, UrlPart(server_id): UrlPart, Query(running): Query<ProcessCache>) -> u16 {
+fn stop(_p: Post, UrlPart(server_id): UrlPart, Query(running): Query<ProcessManager>) -> u16 {
     let mut running = running.write().unwrap();
 
     match running.0.get_mut(&server_id) {
@@ -132,7 +145,7 @@ fn stop(_p: Post, UrlPart(server_id): UrlPart, Query(running): Query<ProcessCach
 fn get_output(
     _g: Get,
     UrlPart(server_id): UrlPart,
-    Query(running): Query<ProcessCache>,
+    Query(running): Query<ProcessManager>,
 ) -> Json<ServerOutput> {
     let running = running.read().unwrap();
 
@@ -151,7 +164,7 @@ fn send_command(
     _p: Post,
     UrlPart(server_id): UrlPart,
     Json(command): Json<InputCommandRequest>,
-    Query(processes): Query<ProcessCache>,
+    Query(processes): Query<ProcessManager>,
 ) -> u16 {
     let mut processes = processes.write().unwrap();
 
@@ -164,6 +177,38 @@ fn send_command(
     200
 }
 
+fn get_token(
+    _g: Get,
+    Json(request): Json<TokenRequest>,
+    Query(authentication): Query<Authentication>,
+) -> Json<TokenResponse> {
+    let user = {
+        let auth = authentication.read().unwrap();
+
+        let Some(user) = auth.get_user(&request.username, &request.password) else {
+            return Json(TokenResponse { token: None });
+        };
+
+        user.clone()
+    };
+
+    let mut auth = authentication.write().unwrap();
+
+    let token = auth.create_session(&user.user_id);
+
+    let res = Json(TokenResponse { token: Some(token) });
+
+    res
+}
+
+fn clean_auth(auth: Arc<RwLock<Authentication>>) {
+    loop {
+        std::thread::sleep(Duration::from_secs(120));
+
+        auth.write().unwrap().clean(SESSION_LENGTH);
+    }
+}
+
 fn main() {
     let router = Route::empty().route("web", sys![]).route(
         "api",
@@ -172,15 +217,21 @@ fn main() {
             .route("start", sys![start])
             .route("stop", sys![stop])
             .route("get_output", sys![get_output])
-            .route("send_command", sys![send_command]),
+            .route("send_command", sys![send_command])
+            .route("get_token", sys![get_token]),
     );
-
-    println!("Server is running on '0.0.0.0:8080'");
 
     let mut cache = TypeCache::new();
 
-    cache.insert::<Configuration>(Arc::new(RwLock::new(Configuration::get_or_create())));
-    cache.insert::<ProcessCache>(Arc::new(RwLock::new(ProcessCache::default())));
+    let auth = shared(Authentication::template());
+
+    let auth_cloned = auth.clone();
+
+    std::thread::spawn(|| clean_auth(auth_cloned));
+
+    cache.insert::<Configuration>(shared(Configuration::get_or_create()));
+    cache.insert::<ProcessManager>(shared(ProcessManager::default()));
+    cache.insert::<Authentication>(auth);
 
     run_with_cache("0.0.0.0:8080", router, cache);
 }

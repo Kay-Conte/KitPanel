@@ -1,12 +1,25 @@
-use models::{FromJson, GlobalStatus, InputCommandRequest, ServerOutput, ToJson};
+use models::{
+    FromJson, GlobalStatus, InputCommandRequest, ServerOutput, ToJson, TokenRequest, TokenResponse,
+};
 use reqwest::{Client, Method};
 
+use uuid::Uuid;
+
 #[derive(Debug)]
-pub enum Error {}
+pub enum Error {
+    BadResponse,
+    ParseError
+}
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        use Error::*;
+
+        match self {
+            BadResponse => write!(f, "Bad response from server"),
+            ParseError => write!(f, "Error parsing response from server"),
+        }
+
     }
 }
 
@@ -94,7 +107,7 @@ impl Request {
         let res = reqwest::Client::new()
             .request(
                 Method::POST,
-                format!("http://127.0.0.1:8080/api/send_command/{}", server_id),
+                format!("http://{}/api/send_command/{}", self.address, server_id),
             )
             .body(InputCommandRequest { command }.to_json())
             .send()
@@ -104,5 +117,24 @@ impl Request {
             Ok(r) if r.status() == 200 => true,
             _ => false,
         }
+    }
+
+    pub async fn get_token(&self, username: String, password: String) -> Option<Uuid> {
+        println!("Getting token");
+        let res = reqwest::Client::new()
+            .request(
+                Method::GET,
+                format!("http://{}/api/get_token/", self.address),
+            )
+            .body(TokenRequest { username, password }.to_json())
+            .send()
+            .await
+            .ok()?;
+
+        println!("Getting token");
+        let body = res.text().await.ok()?;
+
+        println!("Getting token");
+        TokenResponse::from_json(body).and_then(|i| i.token)
     }
 }

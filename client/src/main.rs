@@ -24,6 +24,8 @@ use models::{GlobalStatus, ServerOutput, ServerStatus};
 use request::Request;
 use theme::Theme;
 
+use uuid::Uuid;
+
 pub const EXPAND_ARROW: &'static [u8] = include_bytes!("../assets/icons/ExpandArrow.png");
 pub const EXPAND_ARROW_CLOSED: &'static [u8] =
     include_bytes!("../assets/icons/ExpandArrowClosed.png");
@@ -103,6 +105,8 @@ pub enum LoginField {
 struct MainState {
     request: Request,
     username: String,
+
+    token: Uuid,
 }
 
 #[derive(Default, Debug)]
@@ -115,6 +119,8 @@ struct LoginState {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    GotoMain(Uuid),
+
     FontLoaded(Result<(), font::Error>),
 
     UpdateLoginInput(LoginField, String),
@@ -127,6 +133,8 @@ pub enum Message {
     SendCommand(String, String),
 
     Error(String),
+    ResetStatus(Status),
+
     None,
     SubmitLogin,
 }
@@ -200,6 +208,22 @@ impl Application for App {
         let mut commands = vec![];
 
         match message {
+            Message::GotoMain(token) => {
+                let state = self.page.login_state();
+
+                let main_state = MainState {
+                    request: Request::new(state.address.clone()),
+                    username: state.username.clone(),
+                    token,
+                };
+
+                commands.push(resize(Size {
+                    width: 768,
+                    height: 768,
+                }));
+
+                self.page = Page::Main(main_state)
+            }
             Message::UpdateLoginInput(field, s) => {
                 let state = self.page.login_state();
 
@@ -212,27 +236,17 @@ impl Application for App {
             Message::SubmitLogin => {
                 let state = self.page.login_state();
 
-                let main_state = MainState {
-                    request: Request::new(state.address.clone()),
-                    username: state.username.clone(),
-                };
+                let request = Request::new(state.address.clone());
 
-                let request = main_state.request.clone();
+                let (username, password) = (state.username.clone(), state.password.clone());
 
                 commands.push(Command::perform(
-                    async move { request.get_status().await },
+                    async move { request.get_token(username, password).await },
                     |i| match i {
-                        Some(status) => Message::StatusRefreshed(status),
-                        None => Message::Error("Failed to load status".to_string()),
+                        Some(status) => Message::GotoMain(status),
+                        None => Message::Error("Failed to login".to_string()),
                     },
                 ));
-
-                commands.push(resize(Size {
-                    width: 768,
-                    height: 768,
-                }));
-
-                self.page = Page::Main(main_state);
             }
 
             Message::RefreshStatus => {
@@ -303,8 +317,18 @@ impl Application for App {
             }
 
             Message::FontLoaded(_r) => {}
-            Message::Error(msg) => self.status = Status::Error(msg),
-            Message::None => {}
+            Message::Error(msg) => {
+                let status = Status::Error(msg);
+
+                self.status = status.clone();
+
+                commands.push(Command::perform(
+                    async move { tokio::time::sleep(Duration::from_secs(5)).await },
+                    |_| Message::ResetStatus(status),
+                ))
+            }
+            Message::ResetStatus(status) if self.status == status => self.status = Status::None,
+            _ => {}
         }
 
         Command::batch(commands)

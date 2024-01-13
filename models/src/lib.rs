@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize, de::DeserializeOwned};
+use uuid::Uuid;
 
 pub trait ToJson {
     fn to_json(&self) -> String;
@@ -40,4 +41,15 @@ pub struct ServerOutput {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct InputCommandRequest {
     pub command: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct TokenRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct TokenResponse {
+    pub token: Option<Uuid>,
 }

@@ -9,3 +9,6 @@ edition = "2021"
 
 [workspace]
 members = ["client", "models", "server"]
+
+[workspace.dependencies]
+uuid = "1.6.1"
