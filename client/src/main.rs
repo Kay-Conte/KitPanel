@@ -10,13 +10,15 @@ use components::{navbar, status_bar, Card, Status};
 use iced::{
     executor,
     font::{self, Family},
-    subscription,
+    keyboard::{self, KeyCode},
+    subscription::{self, events},
     widget::{
         button, column, image::Handle, row, scrollable, text_input, Column, Container, Image,
         Space, Text,
     },
     window::{self, resize},
-    Alignment, Application, Command, Element, Font, Length, Renderer, Settings, Size, Subscription,
+    Alignment, Application, Command, Element, Event, Font, Length, Renderer, Settings, Size,
+    Subscription,
 };
 
 use indexmap::IndexMap;
@@ -29,7 +31,9 @@ use uuid::Uuid;
 pub const EXPAND_ARROW: &'static [u8] = include_bytes!("../assets/icons/ExpandArrow.png");
 pub const EXPAND_ARROW_CLOSED: &'static [u8] =
     include_bytes!("../assets/icons/ExpandArrowClosed.png");
-pub const LOGO: &'static [u8] = include_bytes!("../assets/icons/kit_panel_logo_no_bg.png");
+pub const LOGO: &'static [u8] = include_bytes!("../assets/icons/KitPanelLogo.png");
+pub const POWER_BUTTON: &'static [u8] = include_bytes!("../assets/icons/PowerButton.png");
+pub const LOGOUT_BUTTON: &'static [u8] = include_bytes!("../assets/icons/LogoutButton.png");
 
 struct Server {
     id: String,
@@ -80,6 +84,18 @@ impl Servers {
 
     // TODO Handle removing entries that no longer exist in `GlobalStatus`
     fn update(mut self, global_status: GlobalStatus) -> Self {
+        self.inner = self
+            .inner
+            .into_iter()
+            .filter(|i| {
+                global_status
+                    .servers
+                    .iter()
+                    .find(|p| p.id == i.1.id)
+                    .is_some()
+            })
+            .collect();
+
         for server_status in global_status.servers {
             let Some(server) = self.inner.get_mut(&server_status.id) else {
                 self.inner
@@ -102,6 +118,43 @@ pub enum LoginField {
 }
 
 #[derive(Debug)]
+struct TabNav {
+    ordered: Vec<text_input::Id>,
+    current: usize,
+}
+
+impl TabNav {
+    fn new(ordered: Vec<text_input::Id>) -> Self {
+        Self {
+            ordered,
+            current: 0,
+        }
+    }
+
+    fn set(&mut self, id: text_input::Id) {
+        if let Some(idx) = self.ordered.iter().position(|i| *i == id) {
+            self.current = idx;
+        }
+    }
+
+    fn next(&mut self) -> text_input::Id {
+        self.current = (self.current + 1) % self.ordered.len();
+
+        self.ordered[self.current].clone()
+    }
+
+    fn back(&mut self) -> text_input::Id {
+        if self.current == 0 {
+            self.current = self.ordered.len() - 1;
+        } else {
+            self.current = self.current - 1
+        }
+
+        self.ordered[self.current].clone()
+    }
+}
+
+#[derive(Debug)]
 struct MainState {
     request: Request,
     username: String,
@@ -109,16 +162,37 @@ struct MainState {
     token: Uuid,
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct LoginState {
     address: String,
 
     username: String,
     password: String,
+
+    tab_nav: TabNav,
+}
+
+impl Default for LoginState {
+    fn default() -> Self {
+        Self {
+            address: String::new(),
+
+            username: String::new(),
+            password: String::new(),
+
+            tab_nav: TabNav::new(vec![
+                text_input::Id::new("address"),
+                text_input::Id::new("username"),
+                text_input::Id::new("password"),
+            ]),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Event(Event),
+
     GotoMain(Uuid),
 
     FontLoaded(Result<(), font::Error>),
@@ -132,11 +206,14 @@ pub enum Message {
     ToggleServer(String),
     SendCommand(String, String),
 
+    SetFocus(text_input::Id),
+
     Error(String),
     ResetStatus(Status),
 
     None,
     SubmitLogin,
+    Logout,
 }
 
 #[derive(Debug)]
@@ -148,22 +225,6 @@ enum Page {
 impl Default for Page {
     fn default() -> Self {
         Self::Login(LoginState::default())
-    }
-}
-
-impl Page {
-    fn login_state(&mut self) -> &mut LoginState {
-        match self {
-            Self::Login(state) => state,
-            _ => panic!("Attempted to retrieve invalid state"),
-        }
-    }
-
-    fn main_state(&mut self) -> &mut MainState {
-        match self {
-            Self::Main(state) => state,
-            _ => panic!("Attempted to retrieve invalid state"),
-        }
     }
 }
 
@@ -208,8 +269,26 @@ impl Application for App {
         let mut commands = vec![];
 
         match message {
+            Message::Event(Event::Keyboard(keyboard::Event::KeyPressed {
+                key_code: KeyCode::Tab,
+                modifiers,
+            })) => {
+                match &mut self.page {
+                    Page::Login(state) => {
+                        if modifiers.shift() {
+                            commands.push(text_input::focus(state.tab_nav.back()));
+                        } else {
+                            commands.push(text_input::focus(state.tab_nav.next()));
+                        }
+
+                    }
+                    Page::Main(_) => {}
+                };
+            }
             Message::GotoMain(token) => {
-                let state = self.page.login_state();
+                let Page::Login(state) = &mut self.page else {
+                    return Command::batch(commands);
+                };
 
                 let main_state = MainState {
                     request: Request::new(state.address.clone()),
@@ -222,10 +301,22 @@ impl Application for App {
                     height: 768,
                 }));
 
+                let request = main_state.request.clone();
+
+                commands.push(Command::perform(
+                    async move { request.get_status(main_state.token.clone()).await },
+                    |i| match i {
+                        Some(status) => Message::StatusRefreshed(status),
+                        None => Message::Error("Failed to load status".to_string()),
+                    },
+                ));
+
                 self.page = Page::Main(main_state)
             }
             Message::UpdateLoginInput(field, s) => {
-                let state = self.page.login_state();
+                let Page::Login(state) = &mut self.page else {
+                    return Command::batch(commands);
+                };
 
                 match field {
                     LoginField::Address => state.address = s,
@@ -234,7 +325,9 @@ impl Application for App {
                 }
             }
             Message::SubmitLogin => {
-                let state = self.page.login_state();
+                let Page::Login(state) = &mut self.page else {
+                    return Command::batch(commands);
+                };
 
                 let request = Request::new(state.address.clone());
 
@@ -248,14 +341,25 @@ impl Application for App {
                     },
                 ));
             }
+            Message::Logout => {
+                commands.push(resize(Size {
+                    width: 512,
+                    height: 768,
+                }));
 
+                self.page = Page::default();
+            }
             Message::RefreshStatus => {
-                let state = self.page.main_state();
+                let Page::Main(state) = &mut self.page else {
+                    return Command::batch(commands);
+                };
 
                 let request = state.request.clone();
 
+                let token = state.token.clone();
+
                 commands.push(Command::perform(
-                    async move { request.get_status().await },
+                    async move { request.get_status(token).await },
                     |i| match i {
                         Some(status) => Message::StatusRefreshed(status),
                         None => Message::Error("Failed to load status".to_string()),
@@ -268,54 +372,63 @@ impl Application for App {
                     None => Servers::from(status),
                 });
             }
-
             Message::OutputRefreshed(id, new) => {
                 let Some(servers) = &mut self.servers else {
-                    return Command::none();
+                    return Command::batch(commands);
                 };
 
                 let Some(server) = servers.inner.get_mut(&id) else {
-                    return Command::none();
+                    return Command::batch(commands);
                 };
 
                 server.output = new;
             }
-
             Message::ToggleServer(server_id) => {
-                let state = self.page.main_state();
+                let Page::Main(state) = &mut self.page else {
+                    return Command::batch(commands);
+                };
 
                 let request = state.request.clone();
 
                 let Some(servers) = &self.servers else {
-                    return Command::none();
+                    return Command::batch(commands);
                 };
 
                 let Some(server) = servers.inner.get(&server_id) else {
-                    return Command::none();
+                    return Command::batch(commands);
                 };
+
+                let token = state.token.clone();
 
                 match server.running {
                     true => commands.push(Command::perform(
-                        async move { request.stop_server(server_id).await },
+                        async move { request.stop_server(server_id, token).await },
                         |_i| Message::RefreshStatus,
                     )),
                     false => commands.push(Command::perform(
-                        async move { request.start_server(server_id).await },
+                        async move { request.start_server(server_id, token).await },
                         |_i| Message::RefreshStatus,
                     )),
                 };
             }
             Message::SendCommand(server_id, command) => {
-                let state = self.page.main_state();
+                let Page::Main(state) = &mut self.page else {
+                    return Command::batch(commands);
+                };
 
                 let request = state.request.clone();
 
+                let token = state.token.clone();
+
                 commands.push(Command::perform(
-                    async move { request.send_command(server_id, command).await },
+                    async move { request.send_command(server_id, command, token).await },
                     |_i| Message::None,
                 ))
             }
-
+            Message::SetFocus(id) => match &mut self.page {
+                Page::Login(state) => state.tab_nav.set(id),
+                Page::Main(_state) => {}
+            },
             Message::FontLoaded(_r) => {}
             Message::Error(msg) => {
                 let status = Status::Error(msg);
@@ -341,13 +454,15 @@ impl Application for App {
     fn subscription(&self) -> iced::Subscription<Self::Message> {
         let mut subscriptions = vec![];
 
+        subscriptions.push(events().map(Message::Event));
+
         let Page::Main(ref state) = self.page else {
-            return Subscription::none();
+            return Subscription::batch(subscriptions);
         };
 
         subscriptions.push(subscription::unfold(
             "refresh_status".to_string(),
-            state.request.clone(),
+            (state.request.clone(), state.token.clone()),
             refresh_status,
         ));
 
@@ -356,7 +471,11 @@ impl Application for App {
                 for server in servers.inner.values() {
                     subscriptions.push(subscription::unfold(
                         server.id.clone(),
-                        (server.id.clone(), state.request.clone()),
+                        (
+                            server.id.clone(),
+                            state.request.clone(),
+                            state.token.clone(),
+                        ),
                         refresh_output,
                     ))
                 }
@@ -377,7 +496,15 @@ impl Application for App {
 
 impl App {
     fn main_page<'a>(&self, state: &MainState) -> Element<'a, Message, Renderer<Theme>> {
-        let nav = navbar(Text::new(state.username.clone()).size(30).into());
+        let username = Text::new(state.username.clone()).size(30);
+
+        let logout_icon = Image::new(Handle::from_memory(LOGOUT_BUTTON));
+
+        let logout_button = button(logout_icon)
+            .on_press(Message::Logout)
+            .style(theme::Button::Transparent);
+
+        let nav = navbar(row!(username, logout_button).spacing(24).into());
 
         let mut col = Column::new().spacing(2);
 
@@ -394,11 +521,11 @@ impl App {
             None => {}
         }
 
-        column(vec![
-            nav.into(),
-            scrollable(col).height(Length::Fill).into(),
-            status_bar(self.status.clone()).into(),
-        ])
+        column!(
+            nav,
+            scrollable(col).height(Length::Fill),
+            status_bar(self.status.clone()),
+        )
         .into()
     }
 
@@ -412,15 +539,19 @@ impl App {
         let input = |placeholder, value, field| {
             text_input(placeholder, value)
                 .on_input(move |s| Message::UpdateLoginInput(field, s))
+                .on_submit(Message::SubmitLogin)
                 .padding([10, 25])
                 .size(24.0)
         };
 
-        let address_input =
-            input("Address", &state.address, LoginField::Address).width(Length::Fill);
+        let address_input = input("Address", &state.address, LoginField::Address)
+            .width(Length::Fill)
+            .id(text_input::Id::new("address"));
 
-        let username_input = input("Username", &state.username, LoginField::Username);
-        let password_input = input("Password", &state.password, LoginField::Password);
+        let username_input = input("Username", &state.username, LoginField::Username)
+            .id(text_input::Id::new("username"));
+        let password_input = input("Password", &state.password, LoginField::Password)
+            .id(text_input::Id::new("password"));
 
         let handle = Handle::from_memory(EXPAND_ARROW_CLOSED);
         let img = Container::new(Image::new(handle).height(32.0).width(32.0))
@@ -454,27 +585,29 @@ impl App {
     }
 }
 
-async fn refresh_status(request: Request) -> (Message, Request) {
+async fn refresh_status(state: (Request, Uuid)) -> (Message, (Request, Uuid)) {
     tokio::time::sleep(Duration::from_secs(1)).await;
 
-    let Some(global_status) = request.get_status().await else {
+    let (request, token) = &state;
+
+    let Some(global_status) = request.get_status(token.clone()).await else {
         return (
             Message::Error("Failed to retrieve status from remote".to_string()),
-            request,
+            state,
         );
     };
 
-    (Message::StatusRefreshed(global_status), request)
+    (Message::StatusRefreshed(global_status), state)
 }
 
-async fn refresh_output(state: (String, Request)) -> (Message, (String, Request)) {
+async fn refresh_output(state: (String, Request, Uuid)) -> (Message, (String, Request, Uuid)) {
     tokio::time::sleep(Duration::from_secs(1)).await;
 
-    let (server_id, request) = &state;
+    let (server_id, request, token) = &state;
 
     let Some(ServerOutput {
         output: Some(output),
-    }) = request.get_output(server_id.clone()).await
+    }) = request.get_output(server_id.clone(), token.clone()).await
     else {
         return (Message::None, state);
     };

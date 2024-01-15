@@ -11,7 +11,7 @@ use iced::{
 
 use crate::{
     theme::{self, Theme},
-    Message, EXPAND_ARROW, EXPAND_ARROW_CLOSED,
+    Message, EXPAND_ARROW, EXPAND_ARROW_CLOSED, POWER_BUTTON,
 };
 
 pub fn navbar<'a>(rhs: Element<'a, Message, Renderer<Theme>>) -> Element<'a, Message, Renderer<Theme>> {
@@ -118,16 +118,18 @@ impl Component<Message, Renderer<Theme>> for Card {
     }
 
     fn view(&self, state: &Self::State) -> Element<'_, Self::Event, Renderer<Theme>> {
+        let icon = Image::new(Handle::from_memory(POWER_BUTTON));
+
         let status = match self.status {
             true => button(
-                Container::new(Text::new("Online").size(30))
+                Container::new(icon)
                     .height(Length::Fill)
                     .width(Length::Fill)
                     .center_x()
                     .center_y(),
             ),
             false => button(
-                Container::new(Text::new("Offline").size(30))
+                Container::new(icon)
                     .height(Length::Fill)
                     .width(Length::Fill)
                     .center_x()
@@ -135,7 +137,7 @@ impl Component<Message, Renderer<Theme>> for Card {
             )
             .style(theme::Button::Neutral),
         }
-        .width(Length::Fixed(175.0))
+        .width(Length::Fixed(75.0))
         .height(Length::Fill)
         .on_press(CardMessage::ToggleServer);
 

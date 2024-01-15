@@ -1,5 +1,5 @@
 [package]
-name = "minecraft_panel_server"
+name = "kit_panel_server"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,7 +10,7 @@ models = { path = "../models" }
 
 foxhole = { git = "https://github.com/kay-conte/foxhole-rs" }
 
-serde = { version = "1.0.194", features = ["derive"] }
-serde_json = { version = "1.0.111", features = ["preserve_order"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["preserve_order"] }
 
 uuid = { workspace = true, features = ["v4", "serde"] }

@@ -1,7 +1,8 @@
 mod authentication;
-mod configuration;
+mod fs;
 mod json;
 mod process;
+mod server_config;
 
 use std::{
     collections::HashMap,
@@ -10,19 +11,22 @@ use std::{
     time::Duration,
 };
 
-use configuration::Configuration;
+use authentication::{clean_auth, Control, Perm, View};
 use foxhole::{
+    action::RawResponse,
     framework::run_with_cache,
     resolve::{Get, Post, Query, UrlPart},
     sys,
     type_cache::{TypeCache, TypeCacheKey},
-    Route,
+    IntoResponse, Route,
 };
+use fs::Config;
 use json::Json;
 use models::{
     GlobalStatus, InputCommandRequest, ServerOutput, ServerStatus, TokenRequest, TokenResponse,
 };
 use process::Process;
+use server_config::ServerConfig;
 
 use crate::authentication::Authentication;
 
@@ -41,8 +45,9 @@ impl TypeCacheKey for ProcessManager {
 
 fn get_status(
     _g: Get,
-    Query(config): Query<Configuration>,
+    Query(config): Query<ServerConfig>,
     Query(running): Query<ProcessManager>,
+    Perm(View(scope)): Perm<View>,
 ) -> Json<GlobalStatus> {
     let running = &running.read().unwrap().0;
     let config = config.read().unwrap();
@@ -50,6 +55,7 @@ fn get_status(
     let servers = config
         .servers
         .iter()
+        .filter(|i| scope.contains(&i.id))
         .map(|info| {
             let running = running.get(&info.id).map(|p| p.is_alive()).unwrap_or(false);
 
@@ -66,9 +72,14 @@ fn get_status(
 fn start(
     _p: Post,
     UrlPart(server_id): UrlPart,
-    Query(config): Query<Configuration>,
+    Query(config): Query<ServerConfig>,
     Query(running): Query<ProcessManager>,
+    Perm(Control(scope)): Perm<Control>,
 ) -> u16 {
+    if !scope.contains(&server_id) {
+        return 401;
+    }
+
     {
         let running = running.read().unwrap();
 
@@ -90,8 +101,7 @@ fn start(
     };
 
     let dir = config
-        .base_directory
-        .join("servers")
+        .server_directory
         .join(server.id.clone());
 
     if std::fs::create_dir_all(&dir).is_err() {
@@ -127,7 +137,16 @@ fn start(
     200
 }
 
-fn stop(_p: Post, UrlPart(server_id): UrlPart, Query(running): Query<ProcessManager>) -> u16 {
+fn stop(
+    _p: Post,
+    UrlPart(server_id): UrlPart,
+    Query(running): Query<ProcessManager>,
+    Perm(Control(scope)): Perm<Control>,
+) -> u16 {
+    if !scope.contains(&server_id) {
+        return 401;
+    }
+
     let mut running = running.write().unwrap();
 
     match running.0.get_mut(&server_id) {
@@ -146,11 +165,16 @@ fn get_output(
     _g: Get,
     UrlPart(server_id): UrlPart,
     Query(running): Query<ProcessManager>,
-) -> Json<ServerOutput> {
+    Perm(View(scope)): Perm<View>,
+) -> RawResponse {
+    if !scope.contains(&server_id) {
+        return 401u16.response();
+    }
+
     let running = running.read().unwrap();
 
     let Some(server) = running.0.get(&server_id) else {
-        return Json(ServerOutput { output: None });
+        return Json(ServerOutput { output: None }).response();
     };
 
     let output = server.console.inner();
@@ -158,6 +182,7 @@ fn get_output(
     Json(ServerOutput {
         output: Some(output),
     })
+    .response()
 }
 
 fn send_command(
@@ -165,7 +190,12 @@ fn send_command(
     UrlPart(server_id): UrlPart,
     Json(command): Json<InputCommandRequest>,
     Query(processes): Query<ProcessManager>,
+    Perm(Control(scope)): Perm<Control>
 ) -> u16 {
+    if !scope.contains(&server_id) {
+        return 401;
+    }
+
     let mut processes = processes.write().unwrap();
 
     let Some(process) = processes.0.get_mut(&server_id) else {
@@ -201,14 +231,6 @@ fn get_token(
     res
 }
 
-fn clean_auth(auth: Arc<RwLock<Authentication>>) {
-    loop {
-        std::thread::sleep(Duration::from_secs(120));
-
-        auth.write().unwrap().clean(SESSION_LENGTH);
-    }
-}
-
 fn main() {
     let router = Route::empty().route("web", sys![]).route(
         "api",
@@ -223,13 +245,15 @@ fn main() {
 
     let mut cache = TypeCache::new();
 
-    let auth = shared(Authentication::template());
+    let auth = shared(Authentication::get().expect("Failed to create users config"));
 
     let auth_cloned = auth.clone();
 
     std::thread::spawn(|| clean_auth(auth_cloned));
 
-    cache.insert::<Configuration>(shared(Configuration::get_or_create()));
+    cache.insert::<ServerConfig>(shared(
+        ServerConfig::get().expect("Failed to construct server config"),
+    ));
     cache.insert::<ProcessManager>(shared(ProcessManager::default()));
     cache.insert::<Authentication>(auth);
 

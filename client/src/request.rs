@@ -8,7 +8,8 @@ use uuid::Uuid;
 #[derive(Debug)]
 pub enum Error {
     BadResponse,
-    ParseError
+    ParseError,
+    NotAuthorized,
 }
 
 impl std::fmt::Display for Error {
@@ -18,8 +19,8 @@ impl std::fmt::Display for Error {
         match self {
             BadResponse => write!(f, "Bad response from server"),
             ParseError => write!(f, "Error parsing response from server"),
+            NotAuthorized => write!(f, "Not authorized"),
         }
-
     }
 }
 
@@ -39,13 +40,16 @@ impl Request {
         }
     }
 
-    pub async fn get_status(&self) -> Option<GlobalStatus> {
+    pub async fn get_status(&self, token: Uuid) -> Option<GlobalStatus> {
+        let token = serde_json::to_string(&token).unwrap();
+
         let res = self
             .client
             .request(
                 Method::GET,
                 format!("http://{}/api/get_status", self.address),
             )
+            .header("authorization", token)
             .send()
             .await
             .ok()?;
@@ -55,13 +59,16 @@ impl Request {
         GlobalStatus::from_json(body)
     }
 
-    pub async fn get_output(&self, server_id: String) -> Option<ServerOutput> {
+    pub async fn get_output(&self, server_id: String, token: Uuid) -> Option<ServerOutput> {
+        let token = serde_json::to_string(&token).unwrap();
+
         let res = self
             .client
             .request(
                 Method::GET,
                 format!("http://{}/api/get_output/{}", self.address, server_id),
             )
+            .header("authorization", token)
             .send()
             .await
             .ok()?;
@@ -71,13 +78,16 @@ impl Request {
         ServerOutput::from_json(body)
     }
 
-    pub async fn start_server(&self, server_id: String) -> bool {
+    pub async fn start_server(&self, server_id: String, token: Uuid) -> bool {
+        let token = serde_json::to_string(&token).unwrap();
+
         let res = self
             .client
             .request(
                 Method::POST,
                 format!("http://{}/api/start/{}", self.address, server_id),
             )
+            .header("authorization", token)
             .send()
             .await;
 
@@ -87,13 +97,16 @@ impl Request {
         }
     }
 
-    pub async fn stop_server(&self, server_id: String) -> bool {
+    pub async fn stop_server(&self, server_id: String, token: Uuid) -> bool {
+        let token = serde_json::to_string(&token).unwrap();
+
         let res = self
             .client
             .request(
                 Method::POST,
                 format!("http://{}/api/stop/{}", self.address, server_id),
             )
+            .header("authorization", token)
             .send()
             .await;
 
@@ -103,12 +116,15 @@ impl Request {
         }
     }
 
-    pub async fn send_command(&self, server_id: String, command: String) -> bool {
+    pub async fn send_command(&self, server_id: String, command: String, token: Uuid) -> bool {
+        let token = serde_json::to_string(&token).unwrap();
+
         let res = reqwest::Client::new()
             .request(
                 Method::POST,
                 format!("http://{}/api/send_command/{}", self.address, server_id),
             )
+            .header("authorization", token)
             .body(InputCommandRequest { command }.to_json())
             .send()
             .await;
@@ -120,7 +136,6 @@ impl Request {
     }
 
     pub async fn get_token(&self, username: String, password: String) -> Option<Uuid> {
-        println!("Getting token");
         let res = reqwest::Client::new()
             .request(
                 Method::GET,
@@ -131,10 +146,8 @@ impl Request {
             .await
             .ok()?;
 
-        println!("Getting token");
         let body = res.text().await.ok()?;
 
-        println!("Getting token");
         TokenResponse::from_json(body).and_then(|i| i.token)
     }
 }

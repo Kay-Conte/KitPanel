@@ -1393,6 +1393,31 @@ name = "kit_panel"
 version = "0.1.0"
 
 [[package]]
+name = "kit_panel_client"
+version = "0.1.0"
+dependencies = [
+ "iced",
+ "iced-hex-color",
+ "indexmap 2.1.0",
+ "models",
+ "reqwest",
+ "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "kit_panel_server"
+version = "0.1.0"
+dependencies = [
+ "foxhole",
+ "models",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "kurbo"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1557,30 +1582,6 @@ name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
-
-[[package]]
-name = "minecraft_panel_client"
-version = "0.1.0"
-dependencies = [
- "iced",
- "iced-hex-color",
- "indexmap 2.1.0",
- "models",
- "reqwest",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "minecraft_panel_server"
-version = "0.1.0"
-dependencies = [
- "foxhole",
- "models",
- "serde",
- "serde_json",
- "uuid",
-]
 
 [[package]]
 name = "miniz_oxide"
