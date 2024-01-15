@@ -1,4 +1,4 @@
-use foxhole::{http::Version, IntoResponse, Response, action::RawResponse, Action, resolve::{Resolve, ResolveGuard}};
+use foxhole::{http::Version, IntoResponse, Response, action::RawResponse, resolve::{Resolve, ResolveGuard}};
 use models::{FromJson, ToJson};
 
 pub struct Json<T>(pub T);

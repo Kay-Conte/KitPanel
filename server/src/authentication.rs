@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    marker::PhantomData,
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
@@ -8,7 +7,7 @@ use std::{
 use foxhole::{
     resolve::{Resolve, ResolveGuard},
     type_cache::TypeCacheKey,
-    IntoResponse, Response,
+    IntoResponse,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

@@ -5,6 +5,7 @@ use reqwest::{Client, Method};
 
 use uuid::Uuid;
 
+#[allow(unused)]
 #[derive(Debug)]
 pub enum Error {
     BadResponse,
