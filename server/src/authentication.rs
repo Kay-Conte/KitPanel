@@ -35,7 +35,7 @@ impl Scope {
     pub fn contains(&self, other: &String) -> bool {
         match self {
             Scope::All => true,
-            Scope::Some(i) => i.contains(other)
+            Scope::Some(i) => i.contains(other),
         }
     }
 }
@@ -55,13 +55,14 @@ impl Permissions {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
     pub user_id: UserId,
     pub permissions: Permissions,
     pub password: String,
 }
 
+#[derive(Debug)]
 pub struct Session {
     started: Instant,
     user_id: UserId,
@@ -76,7 +77,7 @@ impl Session {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Authentication {
     pub users: HashMap<UserId, User>,
 
@@ -128,7 +129,7 @@ impl Authentication {
     }
 
     pub fn get_user(&self, user_id: &UserId, password: &Password) -> Option<&User> {
-        self.users.get(user_id).filter(|i| i.password == *password)
+        self.users.get(user_id).filter(|t| t.password == *password)
     }
 
     pub fn create_session(&mut self, user_id: &str) -> Token {
@@ -175,7 +176,12 @@ where
         ctx: &'a foxhole::RequestState,
         _path_iter: &mut foxhole::PathIter,
     ) -> foxhole::resolve::ResolveGuard<Self::Output> {
-        let Some(Ok(token)) = ctx.request.headers().get("authorization").map(|i| i.to_str()) else {
+        let Some(Ok(token)) = ctx
+            .request
+            .headers()
+            .get("authorization")
+            .map(|i| i.to_str())
+        else {
             return ResolveGuard::Respond(401u16.response());
         };
 

@@ -100,9 +100,7 @@ fn start(
         return 404;
     };
 
-    let dir = config
-        .server_directory
-        .join(server.id.clone());
+    let dir = config.server_directory.join(server.id.clone());
 
     if std::fs::create_dir_all(&dir).is_err() {
         return 500;
@@ -190,7 +188,7 @@ fn send_command(
     UrlPart(server_id): UrlPart,
     Json(command): Json<InputCommandRequest>,
     Query(processes): Query<ProcessManager>,
-    Perm(Control(scope)): Perm<Control>
+    Perm(Control(scope)): Perm<Control>,
 ) -> u16 {
     if !scope.contains(&server_id) {
         return 401;
@@ -214,6 +212,9 @@ fn get_token(
 ) -> Json<TokenResponse> {
     let user = {
         let auth = authentication.read().unwrap();
+
+        println!("{auth:?}");
+        println!("{:?}", request.password);
 
         let Some(user) = auth.get_user(&request.username, &request.password) else {
             return Json(TokenResponse { token: None });
@@ -251,11 +252,13 @@ fn main() {
 
     std::thread::spawn(|| clean_auth(auth_cloned));
 
-    cache.insert::<ServerConfig>(shared(
-        ServerConfig::get().expect("Failed to construct server config"),
-    ));
+    let config = ServerConfig::get().expect("Failed to construct server config");
+
+    let address = format!("{}:{}", config.address, config.port);
+
+    cache.insert::<ServerConfig>(shared(config));
     cache.insert::<ProcessManager>(shared(ProcessManager::default()));
     cache.insert::<Authentication>(auth);
 
-    run_with_cache("0.0.0.0:8080", router, cache);
+    run_with_cache(address, router, cache);
 }

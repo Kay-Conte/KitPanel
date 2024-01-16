@@ -27,6 +27,8 @@ impl ServerInfo {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ServerConfig {
+    pub address: String,
+    pub port: String,
     pub server_directory: PathBuf,
     pub servers: Vec<ServerInfo>,
 }
@@ -34,6 +36,8 @@ pub struct ServerConfig {
 impl Default for ServerConfig {
     fn default() -> Self {
         Self {
+            address: "0.0.0.0".to_string(),
+            port: "8080".to_string(),
             server_directory: ServerConfig::server_dir(),
             servers: vec![ServerInfo::template()],
         }
