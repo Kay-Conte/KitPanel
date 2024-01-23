@@ -280,6 +280,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
+name = "client"
+version = "0.1.0"
+dependencies = [
+ "iced",
+ "iced-hex-color",
+ "indexmap 2.1.0",
+ "models",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "clipboard-win"
 version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1390,32 +1405,6 @@ dependencies = [
 [[package]]
 name = "kit_panel"
 version = "0.1.0"
-
-[[package]]
-name = "kit_panel_client"
-version = "0.1.0"
-dependencies = [
- "iced",
- "iced-hex-color",
- "indexmap 2.1.0",
- "models",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "kit_panel_server"
-version = "0.1.0"
-dependencies = [
- "foxhole",
- "models",
- "serde",
- "serde_json",
- "uuid",
-]
 
 [[package]]
 name = "kurbo"
@@ -2533,6 +2522,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "foxhole",
+ "models",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

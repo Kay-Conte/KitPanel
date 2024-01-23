@@ -151,44 +151,44 @@ impl Component<Message, Renderer<Theme>> for Card {
             .height(Length::Fill)
             .center_y();
 
-        let status_row = row!(
-            id,
-            Space::new(Length::Fill, Length::Fill),
-            icon,
-        )
-        .align_items(Alignment::Center)
-        .padding([0, 20])
-        .height(Length::Fill);
+        let status_row = row!(id, Space::new(Length::Fill, Length::Fill), icon,)
+            .align_items(Alignment::Center)
+            .padding([0, 20])
+            .height(Length::Fill);
 
-        let status_row = Container::new(
-            row!(
-                status,
-                button(status_row)
-                    .on_press(CardMessage::Expand)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .style(theme::Button::Transparent)
-            )
-            .height(Length::Fixed(75.0)),
+        let status_row = row!(
+            status,
+            button(status_row)
+                .on_press(CardMessage::Expand)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .style(theme::Button::Transparent)
         )
-        .style(theme::Container::Secondary);
+        .height(Length::Fixed(75.0));
+
+        let status_row = Container::new(status_row).style(theme::Container::Secondary);
 
         let mut col = Column::new().push(status_row);
 
         if state.expanded {
+            let content: Vec<Element<'_, Self::Event, Renderer<Theme>>> = if self.console.len() == 0
+            {
+                vec![Text::new("[KitPanel] No logs yet").size(20).into()]
+            } else {
+                self.console
+                    .iter()
+                    .rev()
+                    .map(|i| Text::new(i).size(20).into())
+                    .collect()
+            };
+
             let scrollable = Container::new(
-                scrollable(column(
-                    self.console
-                        .iter()
-                        .rev()
-                        .map(|i| Text::new(i).size(20).into())
-                        .collect(),
-                ))
-                .direction(Direction::Vertical(
-                    Properties::new().alignment(scrollable::Alignment::End),
-                ))
-                .height(Length::Fixed(450.0))
-                .width(Length::Fill),
+                scrollable(column(content))
+                    .direction(Direction::Vertical(
+                        Properties::new().alignment(scrollable::Alignment::End),
+                    ))
+                    .height(Length::Fixed(450.0))
+                    .width(Length::Fill),
             )
             .padding(15);
 
