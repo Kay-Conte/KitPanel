@@ -43,7 +43,7 @@ impl TypeCacheKey for ProcessManager {
     type Value = Arc<RwLock<ProcessManager>>;
 }
 
-fn get_status(
+fn get_all_status(
     _g: Get,
     Query(config): Query<ServerConfig>,
     Query(running): Query<ProcessManager>,
@@ -183,7 +183,7 @@ fn get_output(
     .response()
 }
 
-fn send_command(
+fn input(
     _p: Post,
     UrlPart(server_id): UrlPart,
     Json(command): Json<InputCommandRequest>,
@@ -205,7 +205,7 @@ fn send_command(
     200
 }
 
-fn get_token(
+fn auth(
     _g: Get,
     Json(request): Json<TokenRequest>,
     Query(authentication): Query<Authentication>,
@@ -229,16 +229,25 @@ fn get_token(
     res
 }
 
+fn version(_g: Get) -> Json<String> {
+    Json(env!("CARGO_PKG_VERSION").to_string())
+}
+
 fn main() {
     let router = Route::empty().route("web", sys![]).route(
         "api",
         Route::empty()
-            .route("get_status", sys![get_status])
-            .route("start", sys![start])
-            .route("stop", sys![stop])
-            .route("get_output", sys![get_output])
-            .route("send_command", sys![send_command])
-            .route("get_token", sys![get_token]),
+            .route("version", sys![version])
+            .route("auth", sys![auth])
+            .route("status", sys![get_all_status])
+            .route(
+                "server",
+                Route::empty()
+                    .route("start", sys![start])
+                    .route("stop", sys![stop])
+                    .route("output", sys![get_output])
+                    .route("input", sys![input]),
+            ),
     );
 
     let mut cache = TypeCache::new();

@@ -41,15 +41,22 @@ impl Request {
         }
     }
 
+    pub async fn get_version(&self) -> Option<String> {
+        let req = self
+            .client
+            .request(Method::GET, format!("http://{}/api/version", self.address));
+
+        let res = req.send().await.ok()?;
+
+        String::from_json(res.text().await.ok()?)
+    }
+
     pub async fn get_status(&self, token: Uuid) -> Option<GlobalStatus> {
         let token = serde_json::to_string(&token).unwrap();
 
         let res = self
             .client
-            .request(
-                Method::GET,
-                format!("http://{}/api/get_status", self.address),
-            )
+            .request(Method::GET, format!("http://{}/api/status", self.address))
             .header("authorization", token)
             .send()
             .await
@@ -67,7 +74,7 @@ impl Request {
             .client
             .request(
                 Method::GET,
-                format!("http://{}/api/get_output/{}", self.address, server_id),
+                format!("http://{}/api/server/output/{}", self.address, server_id),
             )
             .header("authorization", token)
             .send()
@@ -86,7 +93,7 @@ impl Request {
             .client
             .request(
                 Method::POST,
-                format!("http://{}/api/start/{}", self.address, server_id),
+                format!("http://{}/api/server/start/{}", self.address, server_id),
             )
             .header("authorization", token)
             .send()
@@ -105,7 +112,7 @@ impl Request {
             .client
             .request(
                 Method::POST,
-                format!("http://{}/api/stop/{}", self.address, server_id),
+                format!("http://{}/api/server/stop/{}", self.address, server_id),
             )
             .header("authorization", token)
             .send()
@@ -123,7 +130,7 @@ impl Request {
         let res = reqwest::Client::new()
             .request(
                 Method::POST,
-                format!("http://{}/api/send_command/{}", self.address, server_id),
+                format!("http://{}/api/server/input/{}", self.address, server_id),
             )
             .header("authorization", token)
             .body(InputCommandRequest { command }.to_json())
@@ -138,10 +145,7 @@ impl Request {
 
     pub async fn get_token(&self, username: String, password: String) -> Option<Uuid> {
         let res = reqwest::Client::new()
-            .request(
-                Method::GET,
-                format!("http://{}/api/get_token/", self.address),
-            )
+            .request(Method::GET, format!("http://{}/api/auth/", self.address))
             .body(TokenRequest { username, password }.to_json())
             .send()
             .await

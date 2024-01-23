@@ -343,8 +343,20 @@ impl Application for App {
                 let _ = self.cache.save();
 
                 let request = Request::new(state.address.clone());
+                let request_ = request.clone();
 
                 let (username, password) = (state.username.clone(), state.password.clone());
+
+                commands.push(Command::perform(
+                    async move { request_.get_version().await },
+                    |v| match v {
+                        Some(version) if version == env!("CARGO_PKG_VERSION") => Message::None,
+                        Some(_) => Message::Error(
+                            "Version mismatch, some functionality may be missing".to_string(),
+                        ),
+                        _ => Message::None,
+                    },
+                ));
 
                 commands.push(Command::perform(
                     async move { request.get_token(username, password).await },
