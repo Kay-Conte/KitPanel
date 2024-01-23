@@ -14,17 +14,15 @@ use crate::{
     Message, EXPAND_ARROW, EXPAND_ARROW_CLOSED, POWER_BUTTON,
 };
 
-pub fn navbar<'a>(rhs: Element<'a, Message, Renderer<Theme>>) -> Element<'a, Message, Renderer<Theme>> {
+pub fn navbar<'a>(
+    rhs: Element<'a, Message, Renderer<Theme>>,
+) -> Element<'a, Message, Renderer<Theme>> {
     let title = Text::new("Kit Panel").size(30);
 
-    row(vec![
-        title.into(),
-        Space::new(Length::Fill, 0.0).into(),
-        rhs.into(),
-    ])
-    .align_items(Alignment::Center)
-    .padding(20)
-    .into()
+    row!(title, Space::new(Length::Fill, 0.0), rhs,)
+        .align_items(Alignment::Center)
+        .padding(20)
+        .into()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,13 +43,14 @@ pub fn status_bar<'a>(status: Status) -> Element<'a, Message, Renderer<Theme>> {
             ]
             .spacing(10)
             .align_items(Alignment::Center),
-        ).style(theme::Container::Secondary)
+        )
+        .style(theme::Container::Secondary)
         .center_y()
         .height(50.0)
         .width(Length::Fill),
 
         Status::None => Container::new(Text::new(""))
-            .style(theme::Container::Secondary)
+            .style(theme::Container::Default)
             .height(50.0)
             .width(Length::Fill),
     }
@@ -152,25 +151,24 @@ impl Component<Message, Renderer<Theme>> for Card {
             .height(Length::Fill)
             .center_y();
 
-        let status_row = row(vec![
-            id.into(),
-            Space::new(Length::Fill, Length::Fill).into(),
-            icon.into(),
-        ])
+        let status_row = row!(
+            id,
+            Space::new(Length::Fill, Length::Fill),
+            icon,
+        )
         .align_items(Alignment::Center)
         .padding([0, 20])
         .height(Length::Fill);
 
         let status_row = Container::new(
-            row(vec![
-                status.into(),
+            row!(
+                status,
                 button(status_row)
                     .on_press(CardMessage::Expand)
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .style(theme::Button::Transparent)
-                    .into(),
-            ])
+            )
             .height(Length::Fixed(75.0)),
         )
         .style(theme::Container::Secondary);

@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-const SIZE: usize = 20;
+const BUFFER_SIZE: usize = 20;
 
 pub struct Process {
     child: Option<Child>,
@@ -32,7 +32,7 @@ impl Process {
     }
 
     pub fn send(&mut self, input: String) {
-        self.console.write(input.clone());
+        self.console.buf.write().unwrap().insert(input.clone());
 
         let Some(child) = &mut self.child else {
             return;
@@ -64,29 +64,46 @@ impl Process {
     }
 }
 
+#[derive(Debug)]
+pub struct Buffer {
+    buf: VecDeque<String>,
+    max: usize,
+}
+
+impl Buffer {
+    fn new(max: usize) -> Self {
+        Self {
+            buf: VecDeque::new(),
+            max,
+        }
+    }
+
+    fn get(&self) -> &VecDeque<String> {
+        &self.buf
+    }
+
+    fn insert(&mut self, content: String) {
+        self.buf.push_back(content);
+
+        if self.buf.len() > self.max {
+            self.buf.pop_front();
+        }
+    }
+}
+
 pub struct Console {
-    buf: Arc<RwLock<VecDeque<String>>>,
+    buf: Arc<RwLock<Buffer>>,
 }
 
 impl Console {
     fn new(source: ChildStdout, exit: Arc<AtomicBool>) -> Self {
-        let buf = Arc::new(RwLock::new(VecDeque::new()));
+        let buf = Arc::new(RwLock::new(Buffer::new(BUFFER_SIZE)));
 
         let console = Self { buf };
 
         console.spawn(source, exit);
 
         console
-    }
-
-    fn write(&self, input: String) {
-        let mut buf = self.buf.write().unwrap();
-
-        buf.push_front(input);
-
-        if buf.len() > SIZE {
-            buf.pop_back();
-        }
     }
 
     pub fn spawn(&self, source: ChildStdout, exit: Arc<AtomicBool>) {
@@ -96,11 +113,11 @@ impl Console {
     }
 
     pub fn inner(&self) -> Vec<String> {
-        self.buf.read().unwrap().clone().into()
+        self.buf.read().unwrap().get().clone().into()
     }
 }
 
-fn handle_stdout(buf: Arc<RwLock<VecDeque<String>>>, stdout: ChildStdout, sender: Arc<AtomicBool>) {
+fn handle_stdout(buf: Arc<RwLock<Buffer>>, stdout: ChildStdout, sender: Arc<AtomicBool>) {
     let reader = BufReader::new(stdout);
 
     for line in reader.lines() {
@@ -108,11 +125,7 @@ fn handle_stdout(buf: Arc<RwLock<VecDeque<String>>>, stdout: ChildStdout, sender
             Ok(line) => {
                 let mut buf = buf.write().unwrap();
 
-                buf.push_front(line);
-
-                if buf.len() > SIZE {
-                    buf.pop_back();
-                }
+                buf.insert(line);
             }
             Err(_) => break,
         }

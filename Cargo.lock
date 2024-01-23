@@ -685,7 +685,6 @@ dependencies = [
 [[package]]
 name = "foxhole"
 version = "0.3.0"
-source = "git+https://github.com/kay-conte/foxhole-rs#5c62bc14edf3ce4e1c5e654f1f4b84d57bb6bd2f"
 dependencies = [
  "http",
 ]
@@ -1401,6 +1400,7 @@ dependencies = [
  "indexmap 2.1.0",
  "models",
  "reqwest",
+ "serde",
  "serde_json",
  "tokio",
  "uuid",

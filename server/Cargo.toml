@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 models = { path = "../models" }
 
-foxhole = { git = "https://github.com/kay-conte/foxhole-rs" }
+foxhole = { path = "../../foxhole-rs" }
 
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["preserve_order"] }

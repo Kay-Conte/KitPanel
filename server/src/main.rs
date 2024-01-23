@@ -213,9 +213,6 @@ fn get_token(
     let user = {
         let auth = authentication.read().unwrap();
 
-        println!("{auth:?}");
-        println!("{:?}", request.password);
-
         let Some(user) = auth.get_user(&request.username, &request.password) else {
             return Json(TokenResponse { token: None });
         };

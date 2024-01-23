@@ -8,15 +8,22 @@ edition = "2021"
 [dependencies]
 models = { path = "../models" }
 
-iced = { version = "0.10.0", features = ["lazy", "tokio", "advanced", "image", "web-colors"] }
+iced = { version = "0.10.0", features = [
+  "lazy",
+  "tokio",
+  "advanced",
+  "image",
+  "web-colors",
+] }
 iced-hex-color = "0.1.1"
 
 tokio = "1.35.1"
 
 reqwest = "0.11.23"
 
-indexmap = {version = "2.1.0", features = ["serde"] } 
+indexmap = { version = "2.1.0", features = ["serde"] }
 
 uuid = { workspace = true, features = ["serde"] }
 
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

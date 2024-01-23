@@ -1,12 +1,16 @@
 #![windows_subsystem = "windows"]
 
+mod cache;
 mod components;
+mod fs;
 mod request;
 mod theme;
 
 use std::time::Duration;
 
+use cache::Cache;
 use components::{navbar, status_bar, Card, Status};
+use fs::Config;
 use iced::{
     executor,
     font::{self, Family},
@@ -232,6 +236,7 @@ struct App {
     page: Page,
     status: Status,
     servers: Option<Servers>,
+    cache: Cache,
 }
 
 impl Application for App {
@@ -241,14 +246,19 @@ impl Application for App {
 
     type Theme = Theme;
 
-    type Flags = ();
+    type Flags = Cache;
 
-    fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
+    fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
         (
             Self {
-                page: Page::default(),
+                page: Page::Login(LoginState {
+                    address: flags.last_address.clone(),
+                    username: flags.last_username.clone(),
+                    ..Default::default()
+                }),
                 status: Status::None,
                 servers: None,
+                cache: flags,
             },
             Command::batch(vec![font::load(
                 include_bytes!("../assets/fonts/JetBrainsMono-Regular.ttf").as_slice(),
@@ -280,7 +290,6 @@ impl Application for App {
                         } else {
                             commands.push(text_input::focus(state.tab_nav.next()));
                         }
-
                     }
                     Page::Main(_) => {}
                 };
@@ -329,6 +338,10 @@ impl Application for App {
                     return Command::batch(commands);
                 };
 
+                self.cache = Cache::new(state.address.clone(), state.username.clone());
+
+                let _ = self.cache.save();
+
                 let request = Request::new(state.address.clone());
 
                 let (username, password) = (state.username.clone(), state.password.clone());
@@ -347,7 +360,11 @@ impl Application for App {
                     height: 768,
                 }));
 
-                self.page = Page::default();
+                self.page = Page::Login(LoginState {
+                    username: self.cache.last_username.clone(),
+                    address: self.cache.last_address.clone(),
+                    ..Default::default()
+                });
             }
             Message::RefreshStatus => {
                 let Page::Main(state) = &mut self.page else {
@@ -565,21 +582,20 @@ impl App {
             .height(Length::Fill)
             .width(100.0);
 
-        let user_col =
-            column(vec![username_input.into(), password_input.into()]).width(Length::Fill);
+        let user_col = column!(username_input, password_input).width(Length::Fill);
 
-        let user_row = row(vec![user_col.into(), login_button.into()]).height(100.0);
+        let user_row = row!(user_col, login_button).height(100.0);
 
-        column(vec![
-            nav.into(),
-            logo.into(),
-            Space::new(Length::Fill, Length::Fill).into(),
-            address_input.into(),
-            Space::new(Length::Fill, 50.0).into(),
-            user_row.into(),
-            Space::new(Length::Fill, Length::Fill).into(),
+        column!(
+            nav,
+            logo,
+            Space::new(Length::Fill, Length::Fill),
+            address_input,
+            Space::new(Length::Fill, 50.0),
+            user_row,
+            Space::new(Length::Fill, Length::Fill),
             status_bar(self.status.clone()),
-        ])
+        )
         .align_items(Alignment::Center)
         .into()
     }
@@ -616,6 +632,8 @@ async fn refresh_output(state: (String, Request, Uuid)) -> (Message, (String, Re
 }
 
 fn main() {
+    let cache = Cache::get().expect("Failed to get or create cache");
+
     let _ = App::run(Settings {
         default_font: Font {
             family: Family::Name("JetBrains Mono"),
@@ -626,6 +644,7 @@ fn main() {
             min_size: Some((512, 768)),
             ..Default::default()
         },
+        flags: cache,
         ..Default::default()
     });
 }
