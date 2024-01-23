@@ -31,14 +31,19 @@ impl Process {
         }
     }
 
-    pub fn send(&mut self, input: String) {
-        self.console.buf.write().unwrap().insert(input.clone());
-
+    pub fn send(&mut self, input: String, user: Option<String>) {
         let Some(child) = &mut self.child else {
             return;
         };
 
         let _ = child.stdin.as_mut().unwrap().write_all(input.as_bytes());
+
+        let display = match user {
+            Some(user) => format!("[KitPanel - {}] {}", user, input),
+            None => format!("[KitPanel] {}", input),
+        };
+
+        self.console.buf.write().unwrap().insert(display);
     }
 
     pub fn insert(&mut self, mut child: Child) {
@@ -83,10 +88,10 @@ impl Buffer {
     }
 
     fn insert(&mut self, content: String) {
-        self.buf.push_back(content);
+        self.buf.push_front(content);
 
         if self.buf.len() > self.max {
-            self.buf.pop_front();
+            self.buf.pop_back();
         }
     }
 }

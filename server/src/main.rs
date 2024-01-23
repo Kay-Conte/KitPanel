@@ -11,7 +11,7 @@ use std::{
     time::Duration,
 };
 
-use authentication::{clean_auth, Control, Perm, View};
+use authentication::{clean_auth, Control, Perm, User, View};
 use foxhole::{
     action::RawResponse,
     framework::run_with_cache,
@@ -188,6 +188,7 @@ fn input(
     UrlPart(server_id): UrlPart,
     Json(command): Json<InputCommandRequest>,
     Query(processes): Query<ProcessManager>,
+    user: User,
     Perm(Control(scope)): Perm<Control>,
 ) -> u16 {
     if !scope.contains(&server_id) {
@@ -200,7 +201,7 @@ fn input(
         return 200;
     };
 
-    process.send(command.command);
+    process.send(command.command, Some(user.user_id));
 
     200
 }

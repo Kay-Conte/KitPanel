@@ -7,7 +7,7 @@ use std::{
 use foxhole::{
     resolve::{Resolve, ResolveGuard},
     type_cache::TypeCacheKey,
-    IntoResponse,
+    IntoResponse, PathIter, RequestState,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -60,6 +60,39 @@ pub struct User {
     pub user_id: UserId,
     pub permissions: Permissions,
     pub password: String,
+}
+
+impl<'a> Resolve<'a> for User {
+    type Output = User;
+
+    fn resolve(ctx: &'a RequestState, _path_iter: &mut PathIter) -> ResolveGuard<Self::Output> {
+        let Some(Ok(token)) = ctx
+            .request
+            .headers()
+            .get("authorization")
+            .map(|i| i.to_str())
+        else {
+            return ResolveGuard::Respond(401u16.response());
+        };
+
+        let Ok(token) = serde_json::from_str(token) else {
+            return ResolveGuard::Respond(401u16.response());
+        };
+
+        let cache = ctx.global_cache.read().unwrap();
+
+        let auth = cache.get::<Authentication>().unwrap().read().unwrap();
+
+        let Some(session) = auth.sessions.get(&token) else {
+            return ResolveGuard::Respond(401u16.response());
+        };
+
+        let Some(user) = auth.users.get(&session.user_id) else {
+            return ResolveGuard::Respond(401u16.response());
+        };
+
+        ResolveGuard::Value(user.clone())
+    }
 }
 
 #[derive(Debug)]
