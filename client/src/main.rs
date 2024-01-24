@@ -5,11 +5,12 @@ mod components;
 mod fs;
 mod request;
 mod theme;
+mod pages;
 
 use std::time::Duration;
 
 use cache::Cache;
-use components::{navbar, status_bar, Card, Status};
+use components::{navbar, status_bar, Card, Status, tab_bar};
 use fs::Config;
 use iced::{
     executor,
@@ -21,7 +22,7 @@ use iced::{
         Space, Text,
     },
     window::{self, resize},
-    Alignment, Application, Command, Element, Event, Font, Length, Renderer, Settings, Size,
+    Alignment, Application, Command, Event, Font, Length, Renderer, Settings, Size,
     Subscription,
 };
 
@@ -38,6 +39,10 @@ pub const EXPAND_ARROW_CLOSED: &'static [u8] =
 pub const LOGO: &'static [u8] = include_bytes!("../assets/icons/KitPanelLogo.png");
 pub const POWER_BUTTON: &'static [u8] = include_bytes!("../assets/icons/PowerButton.png");
 pub const LOGOUT_BUTTON: &'static [u8] = include_bytes!("../assets/icons/LogoutButton.png");
+pub const SETTINGS_BUTTON: &'static [u8] = include_bytes!("../assets/icons/SettingsButton.png");
+pub const BACK_ARROW: &'static [u8] = include_bytes!("../assets/icons/BackArrow.png");
+
+type Element<'a> = iced::Element<'a, Message, Renderer<Theme>>;
 
 #[derive(Debug, Clone)]
 struct Server {
@@ -249,6 +254,10 @@ impl Page {
                 width: 512,
                 height: 768,
             }),
+            Page::Settings => Some(Size {
+                width: 768,
+                height: 768,
+            }),
             _ => None,
         }
     }
@@ -316,13 +325,15 @@ impl Application for App {
                     _ => {}
                 };
             }
-            Message::GotoPage(page) => {
+            Message::GotoPage(mut page) => {
                 match page.window_size() {
                     Some(size) => commands.push(resize(size)),
                     None => {}
                 }
 
-                self.page = page;
+                std::mem::swap(&mut page, &mut self.page);
+
+                self.previous_page = Some(page);
             }
             Message::SubmitLogin => {
                 let Page::Login(state) = &mut self.page else {
@@ -404,6 +415,10 @@ impl Application for App {
                 std::mem::swap(&mut self.page, &mut page);
 
                 self.previous_page = Some(page);
+
+                if let Some(size) = self.page.window_size() {
+                    commands.push(resize(size));
+                }
             }
             Message::Logout => {
                 self.page = Page::Login(LoginState {
@@ -542,7 +557,7 @@ impl Application for App {
         Subscription::batch(subscriptions)
     }
 
-    fn view(&self) -> Element<'_, Self::Message, Renderer<Self::Theme>> {
+    fn view(&self) -> Element<'_> {
         match &self.page {
             Page::Login(state) => self.login_page(state),
             Page::Main(state) => self.main_page(state),
@@ -552,14 +567,33 @@ impl Application for App {
 }
 
 impl App {
-    fn settings_page<'a>(&self) -> Element<'a, Message, Renderer<Theme>> {
-        let navbar = row!();
+    fn settings_page<'a>(&self) -> Element<'a> {
+        let back_icon = Image::new(Handle::from_memory(BACK_ARROW));
+
+        let back_button = button(back_icon)
+            .style(theme::Button::Transparent)
+            .on_press(Message::GotoPrevious);
+
+        let navbar = row!(
+            back_button,
+            Space::new(Length::Fill, Length::Shrink),
+            // tab_bar.view(),
+            Space::new(Length::Fill, Length::Shrink),
+            Space::new(32.0, 32.0)
+        )
+        .padding(20);
 
         column!(navbar).into()
     }
 
-    fn main_page<'a>(&self, state: &MainState) -> Element<'a, Message, Renderer<Theme>> {
+    fn main_page<'a>(&self, state: &MainState) -> Element<'a> {
         let username = Text::new(state.username.clone()).size(30);
+
+        let settings_icon = Image::new(Handle::from_memory(SETTINGS_BUTTON));
+
+        let settings_button = button(settings_icon)
+            .style(theme::Button::Transparent)
+            .on_press(Message::GotoPage(Page::Settings));
 
         let logout_icon = Image::new(Handle::from_memory(LOGOUT_BUTTON));
 
@@ -567,7 +601,11 @@ impl App {
             .on_press(Message::Logout)
             .style(theme::Button::Transparent);
 
-        let nav = navbar(row!(username, logout_button).spacing(24).into());
+        let nav = navbar(
+            row!(username, settings_button, logout_button)
+                .spacing(24)
+                .into(),
+        );
 
         let mut col = Column::new().spacing(2);
 
@@ -587,8 +625,14 @@ impl App {
         .into()
     }
 
-    fn login_page<'a>(&self, state: &LoginState) -> Element<'a, Message, Renderer<Theme>> {
-        let nav = navbar(Text::new("").into());
+    fn login_page<'a>(&self, state: &LoginState) -> Element<'a> {
+        let settings_icon = Image::new(Handle::from_memory(SETTINGS_BUTTON));
+
+        let settings_button = button(settings_icon)
+            .style(theme::Button::Transparent)
+            .on_press(Message::GotoPage(Page::Settings));
+
+        let nav = navbar(settings_button.into());
 
         let handle = Handle::from_memory(LOGO);
 

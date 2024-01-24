@@ -17,6 +17,7 @@ pub struct Palette {
     destructive: Color,
     neutral: Color,
     hint: Color,
+    value: Color,
 }
 
 impl Palette {
@@ -28,6 +29,7 @@ impl Palette {
             destructive: hex_color!(#8d4839),
             neutral: hex_color!(#54545A),
             hint: hex_color!(#B5B9C3),
+            value: Color::WHITE,
         }
     }
 }
@@ -55,7 +57,7 @@ impl application::StyleSheet for Theme {
     fn appearance(&self, _style: &Self::Style) -> application::Appearance {
         application::Appearance {
             background_color: self.palette.base,
-            text_color: Color::WHITE,
+            text_color: self.palette.value,
         }
     }
 }

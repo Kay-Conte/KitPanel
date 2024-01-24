@@ -4,7 +4,7 @@ use iced::{
         image::Handle,
         row, scrollable,
         scrollable::{Direction, Properties},
-        text_input, Column, Component, Container, Image, Space, Text,
+        text_input, Column, Component, Container, Image, Row, Space, Text,
     },
     Alignment, Element, Length, Renderer,
 };
@@ -213,4 +213,28 @@ impl<'a> From<Card> for Element<'a, Message, Renderer<Theme>> {
     fn from(value: Card) -> Self {
         component(value)
     }
+}
+
+pub fn tab_bar<'a>(
+    options: Vec<String>,
+    selected: String,
+    on_change: Option<Message>,
+) -> Element<'a, Message, Renderer<Theme>> {
+    let mut row = Row::new().spacing(75);
+
+    for option in options.iter() {
+        let mut text = Text::new(option.clone()).size(30);
+
+        if *option != selected {
+            text = text.style(theme::Text::Hint);
+        }
+
+        let button = button(text)
+            .style(theme::Button::Transparent)
+            .on_press_maybe(on_change.clone());
+
+        row = row.push(button);
+    }
+
+    row.into()
 }
