@@ -16,6 +16,8 @@ use iced::{
     Command, Length, Subscription,
 };
 
+use super::settings::SettingsState;
+
 #[derive(Debug, Clone)]
 pub struct MainState {
     pub request: Request,
@@ -93,7 +95,9 @@ impl MainState {
 
         let settings_button = button(settings_icon)
             .style(theme::Button::Transparent)
-            .on_press(Event::Super(Box::new(Message::GotoPage(Page::Settings))));
+            .on_press(Event::Super(Box::new(Message::GotoPage(Page::Settings(
+                SettingsState::default(),
+            )))));
 
         let logout_icon = Image::new(Handle::from_memory(LOGOUT_BUTTON));
 

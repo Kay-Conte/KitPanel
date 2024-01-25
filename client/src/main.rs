@@ -5,6 +5,7 @@ mod components;
 mod fs;
 mod request;
 mod servers;
+mod settings;
 mod tab_nav;
 mod theme;
 mod views;
@@ -32,6 +33,7 @@ use uuid::Uuid;
 use views::{
     home::{self, MainState},
     login::{self, LoginState},
+    settings::SettingsState,
 };
 
 pub const EXPAND_ARROW: &'static [u8] = include_bytes!("../assets/icons/ExpandArrow.png");
@@ -49,6 +51,7 @@ type Element<'a, M> = iced::Element<'a, M, Renderer<Theme>>;
 pub enum Message {
     LoginPage(login::Event),
     HomePage(home::Event),
+    SettingsPage(views::settings::Event),
 
     Event(Event),
 
@@ -70,7 +73,7 @@ pub enum Message {
 pub enum Page {
     Login(LoginState),
     Main(MainState),
-    Settings,
+    Settings(SettingsState),
 }
 
 impl Default for Page {
@@ -90,7 +93,7 @@ impl Page {
                 width: 768,
                 height: 768,
             }),
-            Page::Settings => Some(Size {
+            Page::Settings(_) => Some(Size {
                 width: 768,
                 height: 768,
             }),
@@ -169,6 +172,20 @@ impl Application for App {
                 let (msg, cmd) = state.update(e);
 
                 commands.push(cmd.map(Message::LoginPage));
+
+                if let Some(m) = msg {
+                    let command = self.update(m);
+
+                    commands.push(command);
+                }
+            }
+
+            Message::SettingsPage(e) => {
+                let Page::Settings(state) = &mut self.page else {
+                    return Command::batch(commands);
+                };
+
+                let msg = state.update(e);
 
                 if let Some(m) = msg {
                     let command = self.update(m);
@@ -311,8 +328,9 @@ impl Application for App {
 
     fn view(&self) -> Element<'_, Message> {
         let page = match &self.page {
-            Page::Login(login) => login.view().map(Message::LoginPage),
-            Page::Main(main) => main.view().map(Message::HomePage),
+            Page::Login(s) => s.view().map(Message::LoginPage),
+            Page::Main(s) => s.view().map(Message::HomePage),
+            Page::Settings(s) => s.view().map(Message::SettingsPage),
             _ => Text::new("This page is not currently used!").into(),
         };
 

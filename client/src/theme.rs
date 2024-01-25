@@ -3,7 +3,7 @@ use iced::{
     widget::{
         button, container,
         scrollable::{self, Scroller},
-        text, text_input,
+        text, text_input, toggler,
     },
     Color, Vector,
 };
@@ -226,5 +226,28 @@ impl text_input::StyleSheet for Theme {
 
     fn disabled(&self, style: &Self::Style) -> text_input::Appearance {
         self.active(style)
+    }
+}
+
+#[derive(Default, Clone)]
+pub enum Toggler {
+    #[default]
+    Default,
+}
+
+impl toggler::StyleSheet for Theme {
+    type Style = Toggler;
+
+    fn active(&self, style: &Self::Style, is_active: bool) -> toggler::Appearance {
+        toggler::Appearance {
+            background: self.palette.secondary,
+            background_border: None,
+            foreground: self.palette.active,
+            foreground_border: None,
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style, is_active: bool) -> toggler::Appearance {
+        self.active(style, is_active)
     }
 }

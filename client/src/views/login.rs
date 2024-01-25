@@ -8,6 +8,8 @@ use crate::{
     SETTINGS_BUTTON,
 };
 
+use super::settings::SettingsState;
+
 #[derive(Hash, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoginField {
     Address,
@@ -92,7 +94,7 @@ impl LoginState {
 
         let settings_button = button(settings_icon)
             .style(theme::Button::Transparent)
-            .on_press(Event::Super(Box::new(Message::GotoPage(Page::Settings))));
+            .on_press(Event::Super(Box::new(Message::GotoPage(Page::Settings(SettingsState::default())))));
 
         let nav = navbar(settings_button.into());
 
