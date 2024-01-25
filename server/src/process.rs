@@ -36,7 +36,13 @@ impl Process {
             return;
         };
 
-        let _ = child.stdin.as_mut().unwrap().write_all(input.as_bytes());
+        let e = child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(format!("{}\n", input).as_bytes());
+
+        println!("{e:?}");
 
         let display = match user {
             Some(user) => format!("[KitPanel - {}] {}", user, input),

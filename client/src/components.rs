@@ -14,9 +14,7 @@ use crate::{
     Message, EXPAND_ARROW, EXPAND_ARROW_CLOSED, POWER_BUTTON,
 };
 
-pub fn navbar<'a>(
-    rhs: Element<'a, Message, Renderer<Theme>>,
-) -> Element<'a, Message, Renderer<Theme>> {
+pub fn navbar<'a, M: 'a>(rhs: Element<'a, M, Renderer<Theme>>) -> Element<'a, M, Renderer<Theme>> {
     let title = Text::new("Kit Panel").size(30);
 
     row!(title, Space::new(Length::Fill, 0.0), rhs,)
@@ -31,7 +29,7 @@ pub enum Status {
     None,
 }
 
-pub fn status_bar<'a>(status: Status) -> Element<'a, Message, Renderer<Theme>> {
+pub fn status_bar<'a>(status: &'a Status) -> Element<'a, Message, Renderer<Theme>> {
     match status {
         Status::Error(s) => Container::new(
             row![
@@ -57,10 +55,16 @@ pub fn status_bar<'a>(status: Status) -> Element<'a, Message, Renderer<Theme>> {
     .into()
 }
 
-pub struct Card {
+pub struct Card<M, F>
+where
+    F: Fn(String) -> M,
+{
     pub server_id: String,
     pub status: bool,
     pub console: Vec<String>,
+
+    pub toggle: M,
+    pub send: F,
 }
 
 pub struct CardState {
@@ -85,12 +89,16 @@ pub enum CardMessage {
     SubmitCommand,
 }
 
-impl Component<Message, Renderer<Theme>> for Card {
+impl<M, F> Component<M, Renderer<Theme>> for Card<M, F>
+where
+    M: 'static + Clone,
+    F: Fn(String) -> M,
+{
     type State = CardState;
 
     type Event = CardMessage;
 
-    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
+    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<M> {
         use CardMessage::*;
 
         match event {
@@ -98,7 +106,7 @@ impl Component<Message, Renderer<Theme>> for Card {
                 state.expanded = !state.expanded;
                 None
             }
-            ToggleServer => Some(Message::ToggleServer(self.server_id.clone())),
+            ToggleServer => Some(self.toggle.clone()),
             UpdateCommand(s) => {
                 state.command = s;
                 None
@@ -108,10 +116,7 @@ impl Component<Message, Renderer<Theme>> for Card {
 
                 state.command.clear();
 
-                Some(Message::SendCommand(
-                    self.server_id.clone(),
-                    format!("{}\n", command),
-                ))
+                Some((self.send)(command))
             }
         }
     }
@@ -209,8 +214,12 @@ impl Component<Message, Renderer<Theme>> for Card {
     }
 }
 
-impl<'a> From<Card> for Element<'a, Message, Renderer<Theme>> {
-    fn from(value: Card) -> Self {
+impl<'a, M, F> From<Card<M, F>> for Element<'a, M, Renderer<Theme>>
+where
+    M: 'static + Clone,
+    F: 'static + Fn(String) -> M,
+{
+    fn from(value: Card<M, F>) -> Self {
         component(value)
     }
 }
