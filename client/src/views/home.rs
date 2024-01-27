@@ -13,7 +13,7 @@ use crate::{
 use iced::{
     subscription,
     widget::{button, column, image::Handle, row, scrollable, Column, Image, Text},
-    Command, Length, Subscription,
+    Alignment, Command, Length, Subscription,
 };
 
 use super::settings::SettingsState;
@@ -104,6 +104,7 @@ impl MainState {
 
         let nav = navbar(
             row!(username, settings_button, logout_button)
+                .align_items(Alignment::Center)
                 .spacing(24)
                 .into(),
         );
