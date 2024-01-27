@@ -22,11 +22,12 @@ use iced::{
     subscription::events,
     widget::{text_input, Text},
     window::{self, resize},
-    Application, Command, Event, Font, Renderer, Settings, Size, Subscription,
+    Application, Command, Event, Font, Renderer, Size, Subscription,
 };
 
 use request::Request;
 use servers::Servers;
+use settings::Settings;
 use theme::Theme;
 
 use uuid::Uuid;
@@ -106,6 +107,7 @@ struct App {
     previous_page: Option<Page>,
     status_bar: Status,
     login_cache: Cache,
+    settings: Settings,
 }
 
 impl Application for App {
@@ -115,19 +117,22 @@ impl Application for App {
 
     type Theme = Theme;
 
-    type Flags = Cache;
+    type Flags = (Settings, Cache);
 
     fn new(flags: Self::Flags) -> (Self, Command<Self::Message>) {
+        let (settings, login_cache) = flags;
+
         (
             Self {
                 page: Page::Login(LoginState {
-                    address: flags.last_address.clone(),
-                    username: flags.last_username.clone(),
+                    address: login_cache.last_address.clone(),
+                    username: login_cache.last_username.clone(),
                     ..Default::default()
                 }),
                 previous_page: None,
                 status_bar: Status::None,
-                login_cache: flags,
+                login_cache,
+                settings,
             },
             Command::batch(vec![font::load(
                 include_bytes!("../assets/fonts/JetBrainsMono-Regular.ttf").as_slice(),
@@ -330,7 +335,7 @@ impl Application for App {
         let page = match &self.page {
             Page::Login(s) => s.view().map(Message::LoginPage),
             Page::Main(s) => s.view().map(Message::HomePage),
-            Page::Settings(s) => s.view().map(Message::SettingsPage),
+            Page::Settings(s) => s.view(&self.settings).map(Message::SettingsPage),
             _ => Text::new("This page is not currently used!").into(),
         };
 
@@ -339,9 +344,10 @@ impl Application for App {
 }
 
 fn main() {
+    let settings = Settings::get().expect("Failed to get or create settings");
     let cache = Cache::get().expect("Failed to get or create cache");
 
-    let _ = App::run(Settings {
+    let _ = App::run(iced::Settings {
         default_font: Font {
             family: Family::Name("JetBrains Mono"),
             ..Default::default()
@@ -351,7 +357,7 @@ fn main() {
             min_size: Some((512, 768)),
             ..Default::default()
         },
-        flags: cache,
+        flags: (settings, cache),
         ..Default::default()
     });
 }

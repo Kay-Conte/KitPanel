@@ -1,10 +1,10 @@
 use iced::{
     widget::{button, column, image::Handle, row, text_input, Container, Image, Space},
-    Alignment, Length, Command,
+    Alignment, Command, Length,
 };
 
 use crate::{
-    components::navbar, tab_nav::TabNav, theme, Element, Message, Page, EXPAND_ARROW_CLOSED, LOGO,
+    components::{navbar, icon_button}, tab_nav::TabNav, theme, Element, Message, Page, EXPAND_ARROW_CLOSED, LOGO,
     SETTINGS_BUTTON,
 };
 
@@ -92,9 +92,9 @@ impl LoginState {
     pub fn view<'a>(&self) -> Element<'a, Event> {
         let settings_icon = Image::new(Handle::from_memory(SETTINGS_BUTTON));
 
-        let settings_button = button(settings_icon)
-            .style(theme::Button::Transparent)
-            .on_press(Event::Super(Box::new(Message::GotoPage(Page::Settings(SettingsState::default())))));
+        let settings_button = icon_button(settings_icon).on_press(Event::Super(Box::new(
+            Message::GotoPage(Page::Settings(SettingsState::default())),
+        )));
 
         let nav = navbar(settings_button.into());
 

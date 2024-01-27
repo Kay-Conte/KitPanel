@@ -4,7 +4,7 @@ use models::ServerOutput;
 use uuid::Uuid;
 
 use crate::{
-    components::{navbar, Card},
+    components::{icon_button, navbar, Card},
     request::Request,
     servers::Servers,
     theme, Element, Message, Page, LOGOUT_BUTTON, SETTINGS_BUTTON,
@@ -93,17 +93,14 @@ impl MainState {
 
         let settings_icon = Image::new(Handle::from_memory(SETTINGS_BUTTON));
 
-        let settings_button = button(settings_icon)
-            .style(theme::Button::Transparent)
-            .on_press(Event::Super(Box::new(Message::GotoPage(Page::Settings(
-                SettingsState::default(),
-            )))));
+        let settings_button = icon_button(settings_icon).on_press(Event::Super(Box::new(
+            Message::GotoPage(Page::Settings(SettingsState::default())),
+        )));
 
         let logout_icon = Image::new(Handle::from_memory(LOGOUT_BUTTON));
 
-        let logout_button = button(logout_icon)
-            .on_press(Event::Super(Box::new(Message::GotoPrevious)))
-            .style(theme::Button::Transparent);
+        let logout_button =
+            icon_button(logout_icon).on_press(Event::Super(Box::new(Message::GotoPrevious)));
 
         let nav = navbar(
             row!(username, settings_button, logout_button)

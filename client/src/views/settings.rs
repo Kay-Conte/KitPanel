@@ -1,29 +1,35 @@
-use iced::widget::*;
+use iced::widget::{self, image::Handle, *};
 
-use crate::{Element, Message};
+use crate::{settings::Settings, theme, Element, Message, BACK_ARROW, components::icon_button};
 
 #[derive(Debug, Clone)]
 pub enum Event {
+    GotoPrevious,
+
     Set(bool),
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct SettingsState {
-    set: bool,
-}
+#[derive(Default, Debug, Clone)]
+pub struct SettingsState {}
 
 impl SettingsState {
     pub fn update(&mut self, evt: Event) -> Option<Message> {
-        let msg = None;
+        let mut msg = None;
 
         match evt {
-            Event::Set(v) => self.set = v,
+            Event::GotoPrevious => msg = Some(Message::GotoPrevious),
+            _ => {}
         }
 
         msg
     }
 
-    pub fn view<'a>(&self) -> Element<'a, Event> {
-        Toggler::new(None, self.set, Event::Set).size(48).into()
+    pub fn view<'a>(&self, settings: &Settings) -> Element<'a, Event> {
+        let back_button =
+            icon_button(Image::new(Handle::from_memory(BACK_ARROW))).on_press(Event::GotoPrevious);
+
+        let nav_row = row!(back_button).padding(20);
+
+        widget::column!(nav_row).into()
     }
 }

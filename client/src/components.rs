@@ -4,17 +4,23 @@ use iced::{
         image::Handle,
         row, scrollable,
         scrollable::{Direction, Properties},
-        text_input, Column, Component, Container, Image, Row, Space, Text,
+        text_input, Button, Column, Component, Container, Image, Row, Space, Text,
     },
-    Alignment, Element, Length, Renderer,
+    Alignment, Length, Renderer,
 };
 
 use crate::{
     theme::{self, Theme},
-    Message, EXPAND_ARROW, EXPAND_ARROW_CLOSED, POWER_BUTTON,
+    Element, Message, EXPAND_ARROW, EXPAND_ARROW_CLOSED, POWER_BUTTON,
 };
 
-pub fn navbar<'a, M: 'a>(rhs: Element<'a, M, Renderer<Theme>>) -> Element<'a, M, Renderer<Theme>> {
+pub fn icon_button<'a, M: 'a>(
+    content: impl Into<Element<'a, M>>,
+) -> Button<'a, M, Renderer<Theme>> {
+    button(content).padding(10).style(theme::Button::Icon)
+}
+
+pub fn navbar<'a, M: 'a>(rhs: Element<'a, M>) -> Element<'a, M> {
     let title = Text::new("Kit Panel").size(30);
 
     row!(title, Space::new(Length::Fill, 0.0), rhs,)
@@ -29,7 +35,7 @@ pub enum Status {
     None,
 }
 
-pub fn status_bar<'a>(status: &'a Status) -> Element<'a, Message, Renderer<Theme>> {
+pub fn status_bar<'a>(status: &'a Status) -> Element<'a, Message> {
     match status {
         Status::Error(s) => Container::new(
             row![
@@ -121,31 +127,25 @@ where
         }
     }
 
-    fn view(&self, state: &Self::State) -> Element<'_, Self::Event, Renderer<Theme>> {
+    fn view(&self, state: &Self::State) -> Element<'_, Self::Event> {
         let icon = Image::new(Handle::from_memory(POWER_BUTTON));
 
-        let status = match self.status {
-            true => button(
-                Container::new(icon)
-                    .height(Length::Fill)
-                    .width(Length::Fill)
-                    .center_x()
-                    .center_y(),
-            ),
-            false => button(
-                Container::new(icon)
-                    .height(Length::Fill)
-                    .width(Length::Fill)
-                    .center_x()
-                    .center_y(),
-            )
-            .style(theme::Button::Neutral),
-        }
+        let mut power_button = button(
+            Container::new(icon)
+                .height(Length::Fill)
+                .width(Length::Fill)
+                .center_x()
+                .center_y(),
+        )
         .width(Length::Fixed(75.0))
         .height(Length::Fill)
         .on_press(CardMessage::ToggleServer);
 
-        let id: Element<'_, _, Renderer<Theme>> = Text::new(&self.server_id).size(30).into();
+        if !self.status {
+            power_button = power_button.style(theme::Button::Neutral);
+        }
+
+        let id: Element<'_, _> = Text::new(&self.server_id).size(30).into();
 
         let handle = Handle::from_memory(match state.expanded {
             true => EXPAND_ARROW,
@@ -162,7 +162,7 @@ where
             .height(Length::Fill);
 
         let status_row = row!(
-            status,
+            power_button,
             button(status_row)
                 .on_press(CardMessage::Expand)
                 .width(Length::Fill)
@@ -176,8 +176,7 @@ where
         let mut col = Column::new().push(status_row);
 
         if state.expanded {
-            let content: Vec<Element<'_, Self::Event, Renderer<Theme>>> = if self.console.len() == 0
-            {
+            let content: Vec<Element<'_, Self::Event>> = if self.console.len() == 0 {
                 vec![Text::new("[KitPanel] No logs yet").size(20).into()]
             } else {
                 self.console
@@ -214,7 +213,7 @@ where
     }
 }
 
-impl<'a, M, F> From<Card<M, F>> for Element<'a, M, Renderer<Theme>>
+impl<'a, M, F> From<Card<M, F>> for Element<'a, M>
 where
     M: 'static + Clone,
     F: 'static + Fn(String) -> M,
@@ -228,7 +227,7 @@ pub fn tab_bar<'a>(
     options: Vec<String>,
     selected: String,
     on_change: Option<Message>,
-) -> Element<'a, Message, Renderer<Theme>> {
+) -> Element<'a, Message> {
     let mut row = Row::new().spacing(75);
 
     for option in options.iter() {
@@ -239,7 +238,7 @@ pub fn tab_bar<'a>(
         }
 
         let button = button(text)
-            .style(theme::Button::Transparent)
+            .style(theme::Button::Icon)
             .on_press_maybe(on_change.clone());
 
         row = row.push(button);

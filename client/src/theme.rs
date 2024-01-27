@@ -10,6 +10,20 @@ use iced::{
 
 use iced_hex_color::hex_color;
 
+fn darken(mut base: Color, factor: f32) -> Color {
+    let f = |i: f32| {
+        let diff = i * factor;
+
+        i - diff
+    };
+
+    base.r = f(base.r);
+    base.g = f(base.g);
+    base.b = f(base.b);
+
+    base
+}
+
 pub struct Palette {
     base: Color,
     secondary: Color,
@@ -110,12 +124,13 @@ impl container::StyleSheet for Theme {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub enum Button {
     #[default]
     Active,
     Destructive,
     Neutral,
+    Icon,
     Transparent,
 }
 
@@ -127,17 +142,37 @@ impl button::StyleSheet for Theme {
             Button::Active => self.palette.active,
             Button::Destructive => self.palette.destructive,
             Button::Neutral => self.palette.neutral,
-            Button::Transparent => Color::TRANSPARENT,
+            Button::Icon | Button::Transparent => Color::TRANSPARENT,
+        };
+
+        let radius = match style {
+            Button::Icon => f32::MAX,
+            _ => 0.0,
         };
 
         button::Appearance {
             shadow_offset: Vector::new(0.0, 0.0),
             background: Some(color.into()),
-            border_radius: 0.0.into(),
+            border_radius: radius.into(),
             border_width: 0.0,
             border_color: Color::WHITE,
             text_color: Color::WHITE,
         }
+    }
+
+    fn hovered(&self, style: &Self::Style) -> button::Appearance {
+        let mut appearance = self.active(style);
+
+        appearance.background = Some(
+            match style {
+                Button::Active => darken(self.palette.active, 0.10),
+                Button::Icon | Button::Transparent => Color::from_rgba8(10, 10, 10, 0.1),
+                _ => darken(self.palette.active, 0.10),
+            }
+            .into(),
+        );
+
+        appearance
     }
 }
 
