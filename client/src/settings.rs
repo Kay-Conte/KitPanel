@@ -4,12 +4,20 @@ use crate::fs::Config;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Settings {
-    scale_factor: f32,
+    pub enable_cache: bool,
+    pub scale_factor: f32,
+    pub window_title: String,
+    pub dark_mode: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { scale_factor: 0.8 }
+        Self {
+            enable_cache: true,
+            scale_factor: 0.8,
+            window_title: "KitPanel".to_string(),
+            dark_mode: true,
+        }
     }
 }
 

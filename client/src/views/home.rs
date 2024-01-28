@@ -4,6 +4,7 @@ use models::ServerOutput;
 use uuid::Uuid;
 
 use crate::{
+    cache::Cache,
     components::{icon_button, navbar, Card},
     request::Request,
     servers::Servers,
@@ -16,7 +17,7 @@ use iced::{
     Alignment, Command, Length, Subscription,
 };
 
-use super::settings::SettingsState;
+use super::{login::LoginState, settings::SettingsState};
 
 #[derive(Debug, Clone)]
 pub struct MainState {
@@ -35,6 +36,7 @@ pub enum Event {
     StatusRefreshed(models::GlobalStatus),
     OutputRefreshed(String, Vec<String>),
     None,
+    Logout,
 }
 
 impl MainState {
@@ -45,6 +47,7 @@ impl MainState {
         'm: {
             match evt {
                 Event::Super(m) => msg = Some(*m),
+                Event::Logout => msg = Some(Message::Logout),
                 Event::StatusRefreshed(id) => self.servers.update(id),
                 Event::OutputRefreshed(id, new) => {
                     if let Some(server) = self.servers.inner.get_mut(&id) {
@@ -99,8 +102,7 @@ impl MainState {
 
         let logout_icon = Image::new(Handle::from_memory(LOGOUT_BUTTON));
 
-        let logout_button =
-            icon_button(logout_icon).on_press(Event::Super(Box::new(Message::GotoPrevious)));
+        let logout_button = icon_button(logout_icon).on_press(Event::Logout);
 
         let nav = navbar(
             row!(username, settings_button, logout_button)

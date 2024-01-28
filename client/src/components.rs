@@ -4,7 +4,7 @@ use iced::{
         image::Handle,
         row, scrollable,
         scrollable::{Direction, Properties},
-        text_input, Button, Column, Component, Container, Image, Row, Space, Text,
+        text_input, Button, Column, Component, Container, Image, Row, Rule, Space, Text,
     },
     Alignment, Length, Renderer,
 };
@@ -223,26 +223,69 @@ where
     }
 }
 
-pub fn tab_bar<'a>(
-    options: Vec<String>,
-    selected: String,
-    on_change: Option<Message>,
-) -> Element<'a, Message> {
+#[derive(Debug, Clone)]
+pub struct Tab<M> {
+    display: String,
+    selected: bool,
+    on_select: Option<M>,
+}
+
+impl<M> Tab<M> {
+    pub fn new(display: impl Into<String>) -> Self {
+        Self {
+            display: display.into(),
+            selected: false,
+            on_select: None,
+        }
+    }
+
+    pub fn on_select(mut self, m: M) -> Self {
+        self.on_select = Some(m);
+
+        self
+    }
+
+    pub fn selected(mut self, selected: bool) -> Self {
+        self.selected = selected;
+
+        self
+    }
+}
+
+pub fn tab_bar<'a, M: 'a + Clone>(options: Vec<Tab<M>>) -> Element<'a, M> {
     let mut row = Row::new().spacing(75);
 
     for option in options.iter() {
-        let mut text = Text::new(option.clone()).size(30);
+        let mut text = Text::new(option.display.clone()).size(30);
 
-        if *option != selected {
+        if !option.selected {
             text = text.style(theme::Text::Hint);
         }
 
         let button = button(text)
-            .style(theme::Button::Icon)
-            .on_press_maybe(on_change.clone());
+            .style(theme::Button::Transparent)
+            .on_press_maybe(option.on_select.to_owned());
 
         row = row.push(button);
     }
 
     row.into()
+}
+
+pub fn settings_card<'a, M: 'a + Clone>(
+    name: impl Into<String>,
+    description: Option<String>,
+    rhs: impl Into<Element<'a, M>>,
+) -> Element<'a, M> {
+    let display = Text::new(name.into()).size(30);
+
+    let main_row = row!(display, Space::new(Length::Fill, 0.0), rhs.into()).width(Length::Fill);
+
+    let mut main = column!(main_row).spacing(25).width(Length::Fill);
+
+    if let Some(s) = description {
+        main = main.push(Text::new(s).size(20).style(theme::Text::Hint));
+    }
+
+    main.push(Rule::horizontal(1)).into()
 }

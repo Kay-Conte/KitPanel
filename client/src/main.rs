@@ -56,6 +56,8 @@ pub enum Message {
 
     Event(Event),
 
+    UpdateSettings(SettingsField),
+
     GotoPrevious,
     GotoPage(Page),
 
@@ -68,6 +70,13 @@ pub enum Message {
     ResetStatus(Status),
 
     None,
+    Logout,
+}
+
+#[derive(Debug, Clone)]
+pub enum SettingsField {
+    Cache(bool),
+    DarkMode(bool),
 }
 
 #[derive(Debug, Clone)]
@@ -199,6 +208,11 @@ impl Application for App {
                 }
             }
 
+            Message::UpdateSettings(field) => match field {
+                SettingsField::Cache(v) => self.settings.enable_cache = v,
+                SettingsField::DarkMode(v) => self.settings.dark_mode = v,
+            },
+
             Message::GotoPage(mut page) => {
                 if let Some(size) = page.window_size() {
                     commands.push(resize(size));
@@ -273,6 +287,19 @@ impl Application for App {
                         None => Message::Error("Failed to load status".to_string()),
                     },
                 ));
+            }
+
+            Message::Logout => {
+                let mut login_state = LoginState::default();
+
+                login_state.username = self.login_cache.last_username.clone();
+                login_state.address = self.login_cache.last_address.clone();
+
+                self.page = Page::Login(login_state);
+
+                if let Some(size) = self.page.window_size() {
+                    commands.push(resize(size));
+                }
             }
 
             Message::Event(Event::Keyboard(keyboard::Event::KeyPressed {

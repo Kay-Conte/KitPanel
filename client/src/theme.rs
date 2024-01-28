@@ -2,6 +2,7 @@ use iced::{
     application,
     widget::{
         button, container,
+        rule::{self, FillMode},
         scrollable::{self, Scroller},
         text, text_input, toggler,
     },
@@ -166,8 +167,10 @@ impl button::StyleSheet for Theme {
         appearance.background = Some(
             match style {
                 Button::Active => darken(self.palette.active, 0.10),
+                Button::Destructive => darken(self.palette.destructive, 0.10),
+                Button::Neutral => darken(self.palette.neutral, 0.10),
                 Button::Icon | Button::Transparent => Color::from_rgba8(10, 10, 10, 0.1),
-                _ => darken(self.palette.active, 0.10),
+                _ => Color::TRANSPARENT,
             }
             .into(),
         );
@@ -274,15 +277,40 @@ impl toggler::StyleSheet for Theme {
     type Style = Toggler;
 
     fn active(&self, style: &Self::Style, is_active: bool) -> toggler::Appearance {
+        let color = if is_active {
+            self.palette.active
+        } else {
+            self.palette.neutral
+        };
+
         toggler::Appearance {
-            background: self.palette.secondary,
+            background: color,
             background_border: None,
-            foreground: self.palette.active,
+            foreground: self.palette.base,
             foreground_border: None,
         }
     }
 
     fn hovered(&self, style: &Self::Style, is_active: bool) -> toggler::Appearance {
         self.active(style, is_active)
+    }
+}
+
+#[derive(Default, Clone)]
+pub enum Rule {
+    #[default]
+    Default,
+}
+
+impl rule::StyleSheet for Theme {
+    type Style = Rule;
+
+    fn appearance(&self, style: &Self::Style) -> rule::Appearance {
+        rule::Appearance {
+            color: self.palette.value,
+            width: 1,
+            radius: 0.0.into(),
+            fill_mode: FillMode::Full,
+        }
     }
 }
