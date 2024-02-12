@@ -20,7 +20,7 @@ use iced::{
     font::{self, Family},
     keyboard::{self, KeyCode},
     subscription::events,
-    widget::{text_input, Text},
+    widget::text_input,
     window::{self, resize},
     Application, Command, Event, Font, Renderer, Size, Subscription,
 };
@@ -363,7 +363,6 @@ impl Application for App {
             Page::Login(s) => s.view().map(Message::LoginPage),
             Page::Main(s) => s.view().map(Message::HomePage),
             Page::Settings(s) => s.view(&self.settings).map(Message::SettingsPage),
-            _ => Text::new("This page is not currently used!").into(),
         };
 
         iced::widget::column!(page, status_bar(&self.status_bar)).into()

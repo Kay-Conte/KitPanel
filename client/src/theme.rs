@@ -170,7 +170,6 @@ impl button::StyleSheet for Theme {
                 Button::Destructive => darken(self.palette.destructive, 0.10),
                 Button::Neutral => darken(self.palette.neutral, 0.10),
                 Button::Icon | Button::Transparent => Color::from_rgba8(10, 10, 10, 0.1),
-                _ => Color::TRANSPARENT,
             }
             .into(),
         );
@@ -276,7 +275,7 @@ pub enum Toggler {
 impl toggler::StyleSheet for Theme {
     type Style = Toggler;
 
-    fn active(&self, style: &Self::Style, is_active: bool) -> toggler::Appearance {
+    fn active(&self, _style: &Self::Style, is_active: bool) -> toggler::Appearance {
         let color = if is_active {
             self.palette.active
         } else {
@@ -305,7 +304,7 @@ pub enum Rule {
 impl rule::StyleSheet for Theme {
     type Style = Rule;
 
-    fn appearance(&self, style: &Self::Style) -> rule::Appearance {
+    fn appearance(&self, _style: &Self::Style) -> rule::Appearance {
         rule::Appearance {
             color: self.palette.value,
             width: 1,
